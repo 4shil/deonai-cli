@@ -660,7 +660,8 @@ def chat_mode(api_key, model):
                     print(f"  {colored('/switch', Colors.GREEN)}    - Quick switch to another model")
                     print(f"  {colored('/retry', Colors.GREEN)}     - Retry last message with different model")
                     print(f"  {colored('/system', Colors.GREEN)}    - Change system prompt")
-                    print(f'  {colored(\'"""\', Colors.GREEN)}       - Start multiline input (end with """)\n')
+                    triple_quotes = '"""'
+                    print(f'  {colored(triple_quotes, Colors.GREEN)}       - Start multiline input (end with {triple_quotes})\n')
                     
                     print(f"{colored('File Operations:', Colors.YELLOW, Colors.BOLD)}")
                     print(f"  {colored('/read', Colors.GREEN)} <file>    - Read file and show content")
@@ -725,7 +726,8 @@ def chat_mode(api_key, model):
                 print(f"  {colored('switch', Colors.GREEN)}    - Quick switch to another model")
                 print(f"  {colored('retry', Colors.GREEN)}     - Retry last message with different model")
                 print(f"  {colored('system', Colors.GREEN)}    - Change system prompt")
-                print(f'  {colored(\'"""\', Colors.GREEN)}       - Start multiline input (end with """)\n')
+                triple_quotes = '"""'
+                print(f'  {colored(triple_quotes, Colors.GREEN)}       - Start multiline input (end with {triple_quotes})\n')
                 
                 print(f"{colored('File Operations:', Colors.YELLOW, Colors.BOLD)}")
                 print(f"  {colored('read', Colors.GREEN)}      - Read file and show content")
