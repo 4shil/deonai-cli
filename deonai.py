@@ -1175,7 +1175,7 @@ def chat_mode(api_key, model):
                     json={
                         "model": model,
                         "messages": [
-                            {"role": "system", "content": DEONAI_SYSTEM}
+                            {"role": "system", "content": load_system_prompt()}
                         ] + history,
                         "stream": use_streaming
                     },
@@ -1291,7 +1291,7 @@ def main():
                     json={
                         "model": model,
                         "messages": [
-                            {"role": "system", "content": DEONAI_SYSTEM},
+                            {"role": "system", "content": load_system_prompt()},
                             {"role": "user", "content": prompt}
                         ]
                     },
