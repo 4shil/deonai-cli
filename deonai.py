@@ -12,9 +12,9 @@ from pathlib import Path
 # DeonAi branding
 DEONAI_BANNER = """
 ╔══════════════════════════════════════╗
-║         🌊 DeonAi CLI v2.0          ║
+║         DeonAi CLI v2.0             ║
 ║  Your Personal Terminal Assistant   ║
-║      Powered by OpenRouter 🌐       ║
+║      Powered by OpenRouter          ║
 ╚══════════════════════════════════════╝
 """
 
@@ -60,7 +60,7 @@ def fetch_openrouter_models(api_key):
         
         return models
     except Exception as e:
-        print(f"⚠️  Could not fetch models: {e}")
+        print(f"[WARNING] Could not fetch models: {e}")
         # Try to load from cache
         if MODELS_CACHE_FILE.exists():
             with open(MODELS_CACHE_FILE) as f:
@@ -76,20 +76,20 @@ def setup_config():
     api_key = input("Paste your OpenRouter API key: ").strip()
     
     if not api_key.startswith("sk-or-"):
-        print("⚠️  That doesn't look like a valid OpenRouter API key.")
+        print("[ERROR] That doesn't look like a valid OpenRouter API key.")
         print("It should start with 'sk-or-'")
         print("Get one at: https://openrouter.ai/keys")
         sys.exit(1)
     
     # Fetch available models
-    print("\n🔍 Fetching available models from OpenRouter...")
+    print("\n[INFO] Fetching available models from OpenRouter...")
     models = fetch_openrouter_models(api_key)
     
     if not models:
-        print("❌ Could not fetch models. Please check your API key.")
+        print("[ERROR] Could not fetch models. Please check your API key.")
         sys.exit(1)
     
-    print(f"✓ Found {len(models)} models!\n")
+    print(f"[SUCCESS] Found {len(models)} models!\n")
     
     # Show popular models
     print("Choose your model:")
@@ -117,7 +117,7 @@ def setup_config():
             model = popular_models[choice_num - 1][0]
         elif choice_num == len(popular_models) + 1:
             # List all models
-            print("\n📋 All available models:")
+            print("\n[INFO] All available models:")
             for m in models[:50]:  # Show first 50
                 print(f"  - {m.get('id')} ({m.get('name', 'Unknown')})")
             if len(models) > 50:
@@ -130,7 +130,7 @@ def setup_config():
     
     # Validate model exists
     if not any(m.get("id") == model for m in models):
-        print(f"⚠️  Model '{model}' not found, using default")
+        print(f"[WARNING] Model '{model}' not found, using default")
         model = "anthropic/claude-sonnet-4"
     
     # Save config
@@ -144,7 +144,7 @@ def setup_config():
     import os
     os.chmod(CONFIG_FILE, 0o600)
     
-    print(f"\n✓ DeonAi configured with {model}")
+    print(f"\n[SUCCESS] DeonAi configured with {model}")
     print(f"Config saved to: {CONFIG_FILE}")
     print("\nRun 'deonai' again to start chatting!\n")
 
@@ -181,7 +181,7 @@ def chat_mode(api_key, model):
     
     history = load_history()
     if history:
-        print(f"📝 Loaded {len(history)//2} previous messages\n")
+        print(f"[INFO] Loaded {len(history)//2} previous messages\n")
     
     while True:
         try:
@@ -191,20 +191,20 @@ def chat_mode(api_key, model):
                 continue
             
             if user_input.lower() == "exit":
-                print("\n👋 Goodbye!")
+                print("\nGoodbye!")
                 break
             
             if user_input.lower() == "clear":
                 history = []
                 save_history(history)
-                print("🗑️  Conversation cleared\n")
+                print("[INFO] Conversation cleared\n")
                 continue
             
             if user_input.lower() == "models":
-                print("\n🔍 Fetching available models...")
+                print("\n[INFO] Fetching available models...")
                 models = fetch_openrouter_models(api_key)
                 if models:
-                    print(f"\n📋 Available models ({len(models)} total):\n")
+                    print(f"\n[INFO] Available models ({len(models)} total):\n")
                     for m in models[:30]:  # Show first 30
                         name = m.get('name', m.get('id'))
                         model_id = m.get('id')
@@ -214,11 +214,11 @@ def chat_mode(api_key, model):
                         print(f"\n  ... and {len(models) - 30} more models")
                     print("\nTo switch model, run 'deonai --setup' again\n")
                 else:
-                    print("❌ Could not fetch models\n")
+                    print("[ERROR] Could not fetch models\n")
                 continue
             
             if user_input.lower() == "help":
-                print("\n📚 DeonAi Commands:")
+                print("\n[HELP] DeonAi Commands:")
                 print("  exit      - Quit the application")
                 print("  clear     - Reset conversation history")
                 print("  models    - List all available AI models")
@@ -227,7 +227,7 @@ def chat_mode(api_key, model):
                 continue
             
             if user_input.lower() == "status":
-                print(f"\n⚙️  Current Configuration:")
+                print(f"\n[STATUS] Current Configuration:")
                 print(f"  Model: {model}")
                 print(f"  Messages in history: {len(history)}")
                 print(f"  Config: {CONFIG_FILE}\n")
@@ -262,17 +262,17 @@ def chat_mode(api_key, model):
                 history.append({"role": "assistant", "content": assistant_text})
                 save_history(history)
             except requests.exceptions.Timeout:
-                print("⏱️  Request timed out. Try again.\n")
+                print("[ERROR] Request timed out. Try again.\n")
                 history.pop()  # Remove user message since it failed
             except requests.exceptions.RequestException as e:
-                print(f"❌ API Error: {e}\n")
+                print(f"[ERROR] API Error: {e}\n")
                 history.pop()  # Remove user message since it failed
             
         except KeyboardInterrupt:
-            print("\n\n👋 Goodbye!")
+            print("\n\nGoodbye!")
             break
         except Exception as e:
-            print(f"\n❌ Error: {e}\n")
+            print(f"\n[ERROR] {e}\n")
 
 
 def main():
@@ -308,7 +308,7 @@ def main():
                 
                 print(response.json()["choices"][0]["message"]["content"])
             except Exception as e:
-                print(f"❌ Error: {e}")
+                print(f"[ERROR] {e}")
         else:
             # Interactive chat mode
             chat_mode(api_key, model)
