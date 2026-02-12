@@ -21,6 +21,10 @@ CONFIG_DIR = Path.home() / ".deonai"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
 
+# OpenRouter API settings
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
+MODELS_CACHE_FILE = CONFIG_DIR / "models_cache.json"
+
 # DeonAi personality system prompt
 DEONAI_SYSTEM = """You are DeonAi, a helpful and intelligent CLI assistant.
 
