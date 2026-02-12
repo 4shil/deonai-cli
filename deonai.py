@@ -8,15 +8,68 @@ import sys
 import json
 import requests
 import os
+import re
 from pathlib import Path
 
-# DeonAi branding
-DEONAI_BANNER = """
-╔══════════════════════════════════════╗
-║         DeonAi CLI v2.0             ║
-║  Your Personal Terminal Assistant   ║
-║      Powered by OpenRouter          ║
-╚══════════════════════════════════════╝
+# Color codes for beautiful CLI
+class Colors:
+    # Main palette - Ocean/Cyan theme
+    CYAN = '\033[96m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    MAGENTA = '\033[95m'
+    
+    # Styles
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+    UNDERLINE = '\033[4m'
+    
+    # Reset
+    RESET = '\033[0m'
+    
+    @staticmethod
+    def disable():
+        """Disable colors (for Windows compatibility)"""
+        Colors.CYAN = ''
+        Colors.BLUE = ''
+        Colors.GREEN = ''
+        Colors.YELLOW = ''
+        Colors.RED = ''
+        Colors.MAGENTA = ''
+        Colors.BOLD = ''
+        Colors.DIM = ''
+        Colors.UNDERLINE = ''
+        Colors.RESET = ''
+
+# Enable colors on Windows
+if sys.platform == 'win32':
+    try:
+        import colorama
+        colorama.init()
+    except ImportError:
+        Colors.disable()
+
+def colored(text, color='', style=''):
+    """Apply color and style to text"""
+    return f"{style}{color}{text}{Colors.RESET}"
+
+# DeonAi branding with beautiful ASCII art
+DEONAI_BANNER = f"""
+{Colors.CYAN}{Colors.BOLD}╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   ██████╗ ███████╗ ██████╗ ███╗   ██╗     █████╗ ██╗     ║
+║   ██╔══██╗██╔════╝██╔═══██╗████╗  ██║    ██╔══██╗██║     ║
+║   ██║  ██║█████╗  ██║   ██║██╔██╗ ██║    ███████║██║     ║
+║   ██║  ██║██╔══╝  ██║   ██║██║╚██╗██║    ██╔══██║██║     ║
+║   ██████╔╝███████╗╚██████╔╝██║ ╚████║    ██║  ██║██║     ║
+║   ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝╚═╝     ║
+║                                                           ║
+║        {Colors.MAGENTA}Your Personal AI Coding Assistant{Colors.CYAN}              ║
+║                {Colors.DIM}v2.4 • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}                ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝{Colors.RESET}
 """
 
 CONFIG_DIR = Path.home() / ".deonai"
@@ -233,24 +286,24 @@ def read_file(filepath):
         # Security check - prevent reading sensitive files
         forbidden = ['/etc/passwd', '/etc/shadow', '.env', '.ssh/id_rsa']
         if any(str(path).endswith(f) for f in forbidden):
-            return None, "[ERROR] Cannot read sensitive system files"
+            return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + " Cannot read sensitive system files"
         
         if not path.exists():
-            return None, f"[ERROR] File not found: {filepath}"
+            return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" File not found: {filepath}"
         
         if not path.is_file():
-            return None, f"[ERROR] Not a file: {filepath}"
+            return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Not a file: {filepath}"
         
         # Check file size (max 1MB)
         if path.stat().st_size > 1_000_000:
-            return None, f"[ERROR] File too large (max 1MB): {filepath}"
+            return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" File too large (max 1MB): {filepath}"
         
         with open(path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
         
         return content, None
     except Exception as e:
-        return None, f"[ERROR] Could not read file: {e}"
+        return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Could not read file: {e}"
 
 
 def write_file(filepath, content, mode='w'):
@@ -264,14 +317,14 @@ def write_file(filepath, content, mode='w'):
         # Security check - prevent overwriting system files
         forbidden_dirs = ['/etc', '/sys', '/proc', '/dev']
         if any(str(path).startswith(d) for d in forbidden_dirs):
-            return False, "[ERROR] Cannot write to system directories"
+            return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + " Cannot write to system directories"
         
         with open(path, mode, encoding='utf-8') as f:
             f.write(content)
         
-        return True, f"[SUCCESS] Written to: {filepath}"
+        return True, colored("[SUCCESS]", Colors.GREEN, Colors.BOLD) + f" Written to: {colored(filepath, Colors.CYAN)}"
     except Exception as e:
-        return False, f"[ERROR] Could not write file: {e}"
+        return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Could not write file: {e}"
 
 
 def list_directory(dirpath='.'):
@@ -391,7 +444,7 @@ def create_project_structure(project_type, project_name):
         base_path = Path(project_name)
         
         if base_path.exists():
-            return False, f"[ERROR] Directory already exists: {project_name}"
+            return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Directory already exists: {project_name}"
         
         templates = {
             'python': {
@@ -428,7 +481,7 @@ def create_project_structure(project_type, project_name):
         }
         
         if project_type not in templates:
-            return False, f"[ERROR] Unknown project type: {project_type}"
+            return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Unknown project type: {project_type}"
         
         template = templates[project_type]
         
@@ -446,30 +499,99 @@ def create_project_structure(project_type, project_name):
             with open(full_path, 'w') as f:
                 f.write(content)
         
-        return True, f"[SUCCESS] Created {project_type} project: {project_name}"
+        return True, colored("[SUCCESS]", Colors.GREEN, Colors.BOLD) + f" Created {colored(project_type, Colors.CYAN)} project: {colored(project_name, Colors.CYAN)}"
         
     except Exception as e:
-        return False, f"[ERROR] Could not create project: {e}"
+        return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Could not create project: {e}"
+
+
+def update_from_github():
+    """Update DeonAi CLI from GitHub repository"""
+    import subprocess
+    
+    print(f"\n{colored('═' * 60, Colors.CYAN)}")
+    print(f"{colored('DeonAi Auto-Update', Colors.CYAN, Colors.BOLD)}")
+    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+    
+    repo_url = "https://github.com/4shil/deonai-cli.git"
+    
+    try:
+        # Get current script location
+        script_path = Path(__file__).resolve()
+        repo_dir = script_path.parent
+        
+        print(f"{colored('[INFO]', Colors.BLUE)} Checking for updates...")
+        print(f"{colored('[INFO]', Colors.BLUE)} Repository: {colored(repo_url, Colors.CYAN)}\n")
+        
+        # Check if we're in a git repo
+        is_git_repo = (repo_dir / '.git').exists()
+        
+        if is_git_repo:
+            # Pull latest changes
+            print(f"{colored('[INFO]', Colors.BLUE)} Pulling latest changes...\n")
+            
+            result = subprocess.run(
+                ['git', 'pull', 'origin', 'main'],
+                cwd=repo_dir,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                if "Already up to date" in result.stdout:
+                    print(f"{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} You are already on the latest version!\n")
+                else:
+                    print(f"{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} Updated successfully!")
+                    print(f"\n{Colors.DIM}{result.stdout}{Colors.RESET}\n")
+                    print(f"{colored('[INFO]', Colors.BLUE)} Please restart DeonAi to use the new version.\n")
+            else:
+                print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Update failed:\n")
+                print(f"{Colors.DIM}{result.stderr}{Colors.RESET}\n")
+                return False
+        else:
+            # Not a git repo, download fresh copy
+            print(f"{colored('[INFO]', Colors.BLUE)} Not installed via git. Downloading fresh copy...\n")
+            print(f"{colored('[INFO]', Colors.YELLOW)} Manual update required:")
+            print(f"  1. cd ~")
+            print(f"  2. rm -rf deonai-cli")
+            print(f"  3. git clone {repo_url}")
+            print(f"  4. cd deonai-cli")
+            print(f"  5. ./install.sh\n")
+            return False
+        
+        return True
+        
+    except FileNotFoundError:
+        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Git not installed")
+        print(f"{colored('[INFO]', Colors.YELLOW)} Install git to use auto-update\n")
+        return False
+    except subprocess.TimeoutExpired:
+        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Update timed out\n")
+        return False
+    except Exception as e:
+        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Update failed: {e}\n")
+        return False
 
 
 def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
-    print(f"Chat mode - Model: {model}")
-    print("Type 'help' for commands\n")
+    print(f"{colored('Chat Mode', Colors.CYAN, Colors.BOLD)} - Model: {colored(model, Colors.MAGENTA)}")
+    print(f"{Colors.DIM}Type 'help' for commands{Colors.RESET}\n")
     
     history = load_history()
     total_tokens = 0
     multiline_mode = False
     
     if history:
-        print(f"[INFO] Loaded {len(history)//2} previous messages\n")
+        print(f"{colored('[INFO]', Colors.BLUE)} Loaded {colored(str(len(history)//2), Colors.CYAN)} previous messages\n")
     
     while True:
         try:
             # Check for multiline input (triple quotes)
             if multiline_mode:
-                user_input = input("... ").strip()
+                user_input = input(f"{Colors.DIM}... {Colors.RESET}").strip()
                 if user_input == '"""':
                     multiline_mode = False
                     user_input = multiline_buffer
@@ -478,20 +600,20 @@ def chat_mode(api_key, model):
                     multiline_buffer += user_input + "\n"
                     continue
             else:
-                user_input = input("You: ").strip()
+                user_input = input(f"{colored('You:', Colors.GREEN, Colors.BOLD)} ").strip()
                 
                 # Check if starting multiline mode
                 if user_input == '"""':
                     multiline_mode = True
                     multiline_buffer = ""
-                    print('[INFO] Multiline mode (type """ to end)')
+                    print(colored('[INFO]', Colors.BLUE) + ' Multiline mode (type """ to end)')
                     continue
             
             if not user_input:
                 continue
             
             if user_input.lower() == "exit":
-                print("\nGoodbye!")
+                print(f"\n{colored('Goodbye!', Colors.CYAN, Colors.BOLD)} 👋\n")
                 break
             
             if user_input.lower() == "clear":
@@ -518,24 +640,36 @@ def chat_mode(api_key, model):
                 continue
             
             if user_input.lower() == "help":
-                print("\n[HELP] DeonAi Commands:")
-                print("  exit      - Quit the application")
-                print("  clear     - Reset conversation history")
-                print("  undo      - Remove last message pair from history")
-                print("  models    - List all available AI models")
-                print("  switch    - Quick switch to another model")
-                print("  search    - Search conversation history")
-                print("  profile   - Manage profiles (save/load/list)")
-                print("  retry     - Retry the last message with a different model")
-                print("  system    - Change system prompt")
-                print('  """       - Start multiline input (end with """)')
-                print("  read      - Read file and show content")
-                print("  ls        - List directory contents")
-                print("  run       - Execute a code file")
-                print("  init      - Create a new project (python/node/web)")
-                print("  help      - Show this help message")
-                print("  status    - Show current configuration")
-                print("  export    - Export conversation to file\n")
+                print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                print(f"{colored('DeonAi Commands', Colors.CYAN, Colors.BOLD)}")
+                print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                
+                print(f"{colored('Basic:', Colors.YELLOW, Colors.BOLD)}")
+                print(f"  {colored('exit', Colors.GREEN)}      - Quit the application")
+                print(f"  {colored('clear', Colors.GREEN)}     - Reset conversation history")
+                print(f"  {colored('undo', Colors.GREEN)}      - Remove last message pair")
+                print(f"  {colored('help', Colors.GREEN)}      - Show this help message")
+                print(f"  {colored('status', Colors.GREEN)}    - Show current configuration\n")
+                
+                print(f"{colored('AI Control:', Colors.YELLOW, Colors.BOLD)}")
+                print(f"  {colored('models', Colors.GREEN)}    - List all available AI models")
+                print(f"  {colored('switch', Colors.GREEN)}    - Quick switch to another model")
+                print(f"  {colored('retry', Colors.GREEN)}     - Retry last message with different model")
+                print(f"  {colored('system', Colors.GREEN)}    - Change system prompt")
+                print(f'  {colored(\'"""\', Colors.GREEN)}       - Start multiline input (end with """)\n')
+                
+                print(f"{colored('File Operations:', Colors.YELLOW, Colors.BOLD)}")
+                print(f"  {colored('read', Colors.GREEN)}      - Read file and show content")
+                print(f"  {colored('ls', Colors.GREEN)}        - List directory contents")
+                print(f"  {colored('run', Colors.GREEN)}       - Execute a code file")
+                print(f"  {colored('init', Colors.GREEN)}      - Create new project (python/node/web)\n")
+                
+                print(f"{colored('Utilities:', Colors.YELLOW, Colors.BOLD)}")
+                print(f"  {colored('search', Colors.GREEN)}    - Search conversation history")
+                print(f"  {colored('profile', Colors.GREEN)}   - Manage profiles (save/load/list)")
+                print(f"  {colored('export', Colors.GREEN)}    - Export conversation to file\n")
+                
+                print(f"{colored('═' * 60, Colors.CYAN)}\n")
                 continue
             
             if user_input.lower().startswith("init "):
@@ -901,7 +1035,7 @@ def chat_mode(api_key, model):
             
             history.append({"role": "user", "content": user_input})
             
-            print("\nDeonAi: ", end="", flush=True)
+            print(f"\n{colored('DeonAi:', Colors.MAGENTA, Colors.BOLD)} ", end="", flush=True)
             
             # Call OpenRouter API
             try:
@@ -996,9 +1130,12 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--setup":
         setup_config()
     elif len(sys.argv) > 1 and sys.argv[1] == "--version":
-        print("DeonAi CLI v2.1")
-        print("Powered by OpenRouter")
-        print("https://github.com/4shil/deonai-cli")
+        print(DEONAI_BANNER)
+        print(f"{colored('Version:', Colors.CYAN, Colors.BOLD)} 2.4")
+        print(f"{colored('Repository:', Colors.CYAN, Colors.BOLD)} https://github.com/4shil/deonai-cli")
+        print(f"{colored('Powered by:', Colors.CYAN, Colors.BOLD)} OpenRouter\n")
+    elif len(sys.argv) > 1 and sys.argv[1] == "--upgrade":
+        update_from_github()
     elif len(sys.argv) > 1 and sys.argv[1] == "--models":
         # Quick model list without entering chat
         config = load_config()
