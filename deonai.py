@@ -176,7 +176,8 @@ def load_history():
 def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
-    print("Chat mode - Type 'exit' to quit, 'clear' to reset conversation\n")
+    print(f"Chat mode - Model: {model}")
+    print("Type 'exit' to quit, 'clear' to reset, 'models' to list available models\n")
     
     history = load_history()
     if history:
@@ -197,6 +198,23 @@ def chat_mode(api_key, model):
                 history = []
                 save_history(history)
                 print("🗑️  Conversation cleared\n")
+                continue
+            
+            if user_input.lower() == "models":
+                print("\n🔍 Fetching available models...")
+                models = fetch_openrouter_models(api_key)
+                if models:
+                    print(f"\n📋 Available models ({len(models)} total):\n")
+                    for m in models[:30]:  # Show first 30
+                        name = m.get('name', m.get('id'))
+                        model_id = m.get('id')
+                        print(f"  - {model_id}")
+                        print(f"    {name}")
+                    if len(models) > 30:
+                        print(f"\n  ... and {len(models) - 30} more models")
+                    print("\nTo switch model, run 'deonai --setup' again\n")
+                else:
+                    print("❌ Could not fetch models\n")
                 continue
             
             history.append({"role": "user", "content": user_input})
