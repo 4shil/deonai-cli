@@ -57,13 +57,34 @@ def setup_config():
         print(f"✗ API key test failed: {e}")
         sys.exit(1)
     
+    # Choose model
+    print("Choose your model:")
+    print("1. claude-sonnet-4.5 (balanced - recommended)")
+    print("2. claude-opus-4 (most capable)")
+    print("3. claude-haiku-4 (fastest, cheapest)")
+    
+    choice = input("\nChoice [1]: ").strip() or "1"
+    models = {
+        "1": "claude-sonnet-4.5",
+        "2": "claude-opus-4",
+        "3": "claude-haiku-4"
+    }
+    model = models.get(choice, "claude-sonnet-4.5")
+    
+    # Save config
     CONFIG_DIR.mkdir(exist_ok=True)
-    config = {"api_key": api_key, "model": "claude-sonnet-4.5"}
+    config = {"api_key": api_key, "model": model}
     
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f)
     
-    print("✓ Configuration saved!")
+    # Set restrictive permissions
+    import os
+    os.chmod(CONFIG_FILE, 0o600)
+    
+    print(f"\n✓ DeonAi configured with {model}")
+    print(f"Config saved to: {CONFIG_FILE}")
+    print("\nRun 'deonai' again to start chatting!\n")
 
 
 def load_config():
