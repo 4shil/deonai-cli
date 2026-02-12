@@ -713,6 +713,43 @@ def chat_mode(api_key, model):
                     print(f"{colored('═' * 60, Colors.CYAN)}\n")
                     continue
                 
+                elif command == "switch":
+                    print(f"\n{colored('Quick Model Switch', Colors.CYAN, Colors.BOLD)}")
+                    print(f"\n{colored('Popular models:', Colors.YELLOW)}")
+                    quick_models = [
+                        "anthropic/claude-sonnet-4",
+                        "anthropic/claude-opus-4",
+                        "google/gemini-2.0-flash-exp:free",
+                        "openai/gpt-4o",
+                        "meta-llama/llama-3.3-70b-instruct"
+                    ]
+                    for i, m in enumerate(quick_models, 1):
+                        print(f"  {colored(str(i), Colors.GREEN)}. {colored(m, Colors.CYAN)}")
+                    print(f"  {colored('0', Colors.GREEN)}. Enter custom model ID\n")
+                    
+                    choice = input(f"{colored('Choice:', Colors.YELLOW)} ").strip()
+                    try:
+                        idx = int(choice)
+                        if 1 <= idx <= len(quick_models):
+                            new_model = quick_models[idx - 1]
+                        elif idx == 0:
+                            new_model = input(f"{colored('Enter model ID:', Colors.YELLOW)} ").strip()
+                        else:
+                            print(f"{colored('[ERROR]', Colors.RED)} Invalid choice\n")
+                            continue
+                    except ValueError:
+                        new_model = choice
+                    
+                    if new_model:
+                        # Update config
+                        config = load_config()
+                        config["model"] = new_model
+                        model = new_model
+                        with open(CONFIG_FILE, "w") as f:
+                            json.dump(config, f)
+                        print(f"\n{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} Switched to: {colored(model, Colors.CYAN)}\n")
+                    continue
+                
                 # For other commands, strip the slash and process as before
                 user_input = user_input[1:]
             
