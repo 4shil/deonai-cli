@@ -9,22 +9,32 @@ import json
 import requests
 import os
 import re
+import threading
+import time
 from pathlib import Path
 
 # Color codes for beautiful CLI
 class Colors:
-    # Main palette - Ocean/Cyan theme
+    # Enhanced color palette - Modern theme
     CYAN = '\033[96m'
     BLUE = '\033[94m'
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
     MAGENTA = '\033[95m'
+    WHITE = '\033[97m'
+    
+    # Additional colors
+    BRIGHT_CYAN = '\033[96m'
+    BRIGHT_GREEN = '\033[92m'
+    BRIGHT_YELLOW = '\033[93m'
+    BRIGHT_MAGENTA = '\033[95m'
     
     # Styles
     BOLD = '\033[1m'
     DIM = '\033[2m'
     UNDERLINE = '\033[4m'
+    BLINK = '\033[5m'
     
     # Reset
     RESET = '\033[0m'
@@ -38,9 +48,15 @@ class Colors:
         Colors.YELLOW = ''
         Colors.RED = ''
         Colors.MAGENTA = ''
+        Colors.WHITE = ''
+        Colors.BRIGHT_CYAN = ''
+        Colors.BRIGHT_GREEN = ''
+        Colors.BRIGHT_YELLOW = ''
+        Colors.BRIGHT_MAGENTA = ''
         Colors.BOLD = ''
         Colors.DIM = ''
         Colors.UNDERLINE = ''
+        Colors.BLINK = ''
         Colors.RESET = ''
 
 # Enable colors on Windows
@@ -55,21 +71,90 @@ def colored(text, color='', style=''):
     """Apply color and style to text"""
     return f"{style}{color}{text}{Colors.RESET}"
 
+
+class LoadingAnimation:
+    """Animated loading spinner"""
+    def __init__(self, message="Processing"):
+        self.message = message
+        self.running = False
+        self.thread = None
+        # Cool spinner frames
+        self.frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+        self.current_frame = 0
+    
+    def _animate(self):
+        """Animation loop"""
+        while self.running:
+            frame = self.frames[self.current_frame % len(self.frames)]
+            sys.stdout.write(f'\r{colored(frame, Colors.CYAN)} {colored(self.message, Colors.DIM)}...')
+            sys.stdout.flush()
+            self.current_frame += 1
+            time.sleep(0.08)
+    
+    def start(self):
+        """Start the animation"""
+        self.running = True
+        self.thread = threading.Thread(target=self._animate, daemon=True)
+        self.thread.start()
+    
+    def stop(self):
+        """Stop the animation"""
+        self.running = False
+        if self.thread:
+            self.thread.join()
+        sys.stdout.write('\r' + ' ' * (len(self.message) + 20) + '\r')
+        sys.stdout.flush()
+
+
+class TypingAnimation:
+    """Animated typing indicator for AI responses"""
+    def __init__(self):
+        self.running = False
+        self.thread = None
+        self.dots = 0
+    
+    def _animate(self):
+        """Animation loop"""
+        while self.running:
+            dots = '.' * (self.dots % 4)
+            sys.stdout.write(f'\r{colored("DeonAi:", Colors.MAGENTA, Colors.BOLD)} {colored("thinking", Colors.DIM)}{dots}   ')
+            sys.stdout.flush()
+            self.dots += 1
+            time.sleep(0.3)
+    
+    def start(self):
+        """Start the animation"""
+        self.running = True
+        self.thread = threading.Thread(target=self._animate, daemon=True)
+        self.thread.start()
+    
+    def stop(self):
+        """Stop the animation"""
+        self.running = False
+        if self.thread:
+            self.thread.join()
+        sys.stdout.write('\r' + ' ' * 50 + '\r')
+        sys.stdout.flush()
+
+
 # DeonAi branding with beautiful ASCII art
 DEONAI_BANNER = f"""
-{Colors.CYAN}{Colors.BOLD}╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║   ██████╗ ███████╗ ██████╗ ███╗   ██╗     █████╗ ██╗     ║
-║   ██╔══██╗██╔════╝██╔═══██╗████╗  ██║    ██╔══██╗██║     ║
-║   ██║  ██║█████╗  ██║   ██║██╔██╗ ██║    ███████║██║     ║
-║   ██║  ██║██╔══╝  ██║   ██║██║╚██╗██║    ██╔══██║██║     ║
-║   ██████╔╝███████╗╚██████╔╝██║ ╚████║    ██║  ██║██║     ║
-║   ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝╚═╝     ║
-║                                                           ║
-║        {Colors.MAGENTA}Your Personal AI Coding Assistant{Colors.CYAN}              ║
-║                {Colors.DIM}v2.4 • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}                ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝{Colors.RESET}
+{Colors.CYAN}{Colors.BOLD}
+    ╔═══════════════════════════════════════════════════════════════╗
+    ║                                                               ║
+    ║     ██████╗ ███████╗ ██████╗ ███╗   ██╗ █████╗ ██╗          ║
+    ║     ██╔══██╗██╔════╝██╔═══██╗████╗  ██║██╔══██╗██║          ║
+    ║     ██║  ██║█████╗  ██║   ██║██╔██╗ ██║███████║██║          ║
+    ║     ██║  ██║██╔══╝  ██║   ██║██║╚██╗██║██╔══██║██║          ║
+    ║     ██████╔╝███████╗╚██████╔╝██║ ╚████║██║  ██║██║          ║
+    ║     ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝          ║
+    ║                                                               ║
+    ║           {Colors.BRIGHT_MAGENTA}✨ Your AI Coding Assistant ✨{Colors.CYAN}                  ║
+    ║                  {Colors.DIM}v2.7 • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}                 ║
+    ║                                                               ║
+    ╚═══════════════════════════════════════════════════════════════╝
+{Colors.RESET}
+    {Colors.DIM}💡 Tip: Use {Colors.GREEN}/help{Colors.DIM} for commands • Start chatting naturally!{Colors.RESET}
 """
 
 CONFIG_DIR = Path.home() / ".deonai"
@@ -181,45 +266,48 @@ def fetch_openrouter_models(api_key):
 def setup_config():
     """First-time setup - ask for API key"""
     print(DEONAI_BANNER)
-    print("Welcome! Let's set up DeonAi with OpenRouter.\n")
+    print(f"{colored('Welcome to DeonAi Setup!', Colors.CYAN, Colors.BOLD)}\n")
+    print(f"{Colors.DIM}Get your free API key at: {colored('https://openrouter.ai/keys', Colors.BLUE, Colors.UNDERLINE)}{Colors.RESET}\n")
     
-    api_key = input("Paste your OpenRouter API key: ").strip()
+    api_key = input(f"{colored('Paste your OpenRouter API key:', Colors.YELLOW)} ").strip()
     
     if not api_key.startswith("sk-or-"):
-        print("[ERROR] That doesn't look like a valid OpenRouter API key.")
-        print("It should start with 'sk-or-'")
-        print("Get one at: https://openrouter.ai/keys")
+        print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Invalid API key format")
+        print(f"{Colors.DIM}Keys should start with 'sk-or-'{Colors.RESET}")
+        print(f"{Colors.DIM}Get one at: https://openrouter.ai/keys{Colors.RESET}\n")
         sys.exit(1)
     
     # Fetch available models
-    print("\n[INFO] Fetching available models from OpenRouter...")
+    loader = LoadingAnimation("Fetching available models")
+    loader.start()
     models = fetch_openrouter_models(api_key)
+    loader.stop()
     
     if not models:
-        print("[ERROR] Could not fetch models. Please check your API key.")
+        print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Could not fetch models. Check your API key.\n")
         sys.exit(1)
     
-    print(f"[SUCCESS] Found {len(models)} models!\n")
+    print(f"\n{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} Found {colored(str(len(models)), Colors.CYAN)} models!\n")
     
     # Show popular models
-    print("Choose your model:")
+    print(f"{colored('Choose your model:', Colors.CYAN, Colors.BOLD)}\n")
     popular_models = [
-        ("anthropic/claude-sonnet-4", "Claude Sonnet 4 (recommended)"),
-        ("anthropic/claude-opus-4", "Claude Opus 4 (most capable)"),
-        ("google/gemini-2.0-flash-exp:free", "Gemini 2.0 Flash (free)"),
-        ("meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B"),
-        ("openai/gpt-4o", "GPT-4o"),
+        ("anthropic/claude-sonnet-4", "Claude Sonnet 4", "💎 Recommended"),
+        ("anthropic/claude-opus-4", "Claude Opus 4", "🚀 Most capable"),
+        ("google/gemini-2.0-flash-exp:free", "Gemini 2.0 Flash", "✨ FREE"),
+        ("meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B", "🦙 Open source"),
+        ("openai/gpt-4o", "GPT-4o", "🤖 OpenAI"),
     ]
     
-    for i, (model_id, desc) in enumerate(popular_models, 1):
+    for i, (model_id, name, badge) in enumerate(popular_models, 1):
         # Check if model is available
         if any(m.get("id") == model_id for m in models):
-            print(f"{i}. {desc}")
+            print(f"  {colored(str(i), Colors.GREEN)}. {colored(name, Colors.CYAN)} {colored(badge, Colors.DIM)}")
     
-    print(f"{len(popular_models)+1}. List all {len(models)} models")
-    print(f"{len(popular_models)+2}. Enter model ID manually")
+    print(f"\n  {colored(str(len(popular_models)+1), Colors.GREEN)}. List all {len(models)} models")
+    print(f"  {colored(str(len(popular_models)+2), Colors.GREEN)}. Enter model ID manually\n")
     
-    choice = input(f"\nChoice [1]: ").strip() or "1"
+    choice = input(f"{colored('Choice [1]:', Colors.YELLOW)} ").strip() or "1"
     
     try:
         choice_num = int(choice)
@@ -662,20 +750,29 @@ def chat_mode(api_key, model):
                     continue
                 
                 elif command == "models":
-                    print(f"\n{colored('[INFO]', Colors.BLUE)} Fetching available models...")
+                    loader = LoadingAnimation("Fetching models")
+                    loader.start()
                     models = fetch_openrouter_models(api_key)
+                    loader.stop()
+                    
                     if models:
-                        print(f"\n{colored('[INFO]', Colors.BLUE)} Available models ({len(models)} total):\n")
-                        for m in models[:30]:  # Show first 30
+                        print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                        print(f"{colored('Available Models', Colors.CYAN, Colors.BOLD)} {colored(f'({len(models)} total)', Colors.DIM)}")
+                        print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                        
+                        for i, m in enumerate(models[:30], 1):
                             name = m.get('name', m.get('id'))
                             model_id = m.get('id')
-                            print(f"  {colored('-', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
-                            print(f"    {Colors.DIM}{name}{Colors.RESET}")
+                            print(f"  {colored(f'{i:2d}.', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
+                            print(f"      {Colors.DIM}{name}{Colors.RESET}")
+                        
                         if len(models) > 30:
-                            print(f"\n  {Colors.DIM}... and {len(models) - 30} more models{Colors.RESET}")
-                        print(f"\n{colored('[INFO]', Colors.BLUE)} Use {colored('/switch', Colors.GREEN)} to change models\n")
+                            print(f"\n  {Colors.DIM}... and {colored(str(len(models) - 30), Colors.CYAN)} more models{Colors.RESET}")
+                        
+                        print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                        print(f"{Colors.DIM}Use {colored('/switch', Colors.GREEN)} to change models{Colors.RESET}\n")
                     else:
-                        print(f"{colored('[ERROR]', Colors.RED)} Could not fetch models\n")
+                        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Could not fetch models\n")
                     continue
                 
                 elif command == "help":
@@ -799,20 +896,29 @@ def chat_mode(api_key, model):
                 continue
             
             if user_input.lower() == "models":
-                print(f"\n{colored('[INFO]', Colors.BLUE)} Fetching available models...")
+                loader = LoadingAnimation("Fetching models")
+                loader.start()
                 models = fetch_openrouter_models(api_key)
+                loader.stop()
+                
                 if models:
-                    print(f"\n{colored('[INFO]', Colors.BLUE)} Available models ({len(models)} total):\n")
-                    for m in models[:30]:  # Show first 30
+                    print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                    print(f"{colored('Available Models', Colors.CYAN, Colors.BOLD)} {colored(f'({len(models)} total)', Colors.DIM)}")
+                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                    
+                    for i, m in enumerate(models[:30], 1):
                         name = m.get('name', m.get('id'))
                         model_id = m.get('id')
-                        print(f"  {colored('-', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
-                        print(f"    {Colors.DIM}{name}{Colors.RESET}")
+                        print(f"  {colored(f'{i:2d}.', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
+                        print(f"      {Colors.DIM}{name}{Colors.RESET}")
+                    
                     if len(models) > 30:
-                        print(f"\n  {Colors.DIM}... and {len(models) - 30} more models{Colors.RESET}")
-                    print(f"\n{colored('[INFO]', Colors.BLUE)} Use {colored('/switch', Colors.GREEN)} to change models\n")
+                        print(f"\n  {Colors.DIM}... and {colored(str(len(models) - 30), Colors.CYAN)} more models{Colors.RESET}")
+                    
+                    print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                    print(f"{Colors.DIM}Use {colored('/switch', Colors.GREEN)} to change models{Colors.RESET}\n")
                 else:
-                    print(f"{colored('[ERROR]', Colors.RED)} Could not fetch models\n")
+                    print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Could not fetch models\n")
                 continue
             
             if user_input.lower() == "help":
@@ -1229,7 +1335,9 @@ def chat_mode(api_key, model):
             
             history.append({"role": "user", "content": user_input})
             
-            print(f"\n{colored('DeonAi:', Colors.MAGENTA, Colors.BOLD)} ", end="", flush=True)
+            # Show typing animation
+            typing = TypingAnimation()
+            typing.start()
             
             # Call OpenRouter API
             try:
@@ -1254,6 +1362,10 @@ def chat_mode(api_key, model):
                     stream=use_streaming
                 )
                 response.raise_for_status()
+                
+                # Stop typing animation and show AI label
+                typing.stop()
+                print(f"\n{colored('DeonAi:', Colors.MAGENTA, Colors.BOLD)} ", end="", flush=True)
                 
                 if use_streaming:
                     # Stream the response
