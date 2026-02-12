@@ -59,7 +59,22 @@ def main():
         setup_config()
     else:
         config = load_config()
-        print(f"✓ Config loaded: {config['api_key'][:10]}...")
+        
+        # One-shot mode
+        if len(sys.argv) > 1:
+            prompt = " ".join(sys.argv[1:])
+            client = anthropic.Anthropic(api_key=config["api_key"])
+            
+            response = client.messages.create(
+                model=config["model"],
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            print(response.content[0].text)
+        else:
+            print("Run 'deonai <question>' to ask something")
+            print("Run 'deonai --setup' to reconfigure")
 
 
 if __name__ == "__main__":
