@@ -6,7 +6,7 @@ Simple, fast, customized for you.
 
 import sys
 import json
-import anthropic
+import requests
 from pathlib import Path
 
 # DeonAi branding
