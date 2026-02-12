@@ -113,6 +113,41 @@ You can write multiple files in one response.
 """
 
 
+def load_system_prompt():
+    """Load custom system prompt if exists, otherwise return default"""
+    try:
+        if SYSTEM_PROMPT_FILE.exists():
+            with open(SYSTEM_PROMPT_FILE, 'r', encoding='utf-8') as f:
+                custom = f.read().strip()
+                if custom:
+                    return custom
+    except Exception:
+        pass
+    return DEONAI_SYSTEM
+
+
+def save_system_prompt(prompt):
+    """Save custom system prompt"""
+    try:
+        CONFIG_DIR.mkdir(exist_ok=True)
+        with open(SYSTEM_PROMPT_FILE, 'w', encoding='utf-8') as f:
+            f.write(prompt)
+        return True
+    except Exception as e:
+        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Could not save system prompt: {e}")
+        return False
+
+
+def reset_system_prompt():
+    """Reset to default system prompt"""
+    try:
+        if SYSTEM_PROMPT_FILE.exists():
+            SYSTEM_PROMPT_FILE.unlink()
+        return True
+    except Exception:
+        return False
+
+
 def fetch_openrouter_models(api_key):
     """Fetch all available models from OpenRouter"""
     try:
@@ -858,32 +893,49 @@ def chat_mode(api_key, model):
                 parts = user_input.split(maxsplit=1)
                 
                 if len(parts) == 1:
-                    print("\n[INFO] Current system prompt:")
-                    print(DEONAI_SYSTEM)
-                    print()
+                    current_prompt = load_system_prompt()
+                    is_custom = SYSTEM_PROMPT_FILE.exists()
                     
-                    change = input("Change system prompt? (y/N): ").strip().lower()
-                    if change == "y":
-                        print("\nEnter new system prompt (end with empty line):")
+                    print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                    print(f"{colored('System Prompt', Colors.CYAN, Colors.BOLD)} {colored('(Custom)' if is_custom else '(Default)', Colors.YELLOW)}")
+                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                    print(f"{Colors.DIM}{current_prompt}{Colors.RESET}\n")
+                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                    
+                    print(f"{colored('Options:', Colors.YELLOW, Colors.BOLD)}")
+                    print(f"  {colored('1', Colors.GREEN)} - Set custom system prompt")
+                    print(f"  {colored('2', Colors.GREEN)} - Reset to default")
+                    print(f"  {colored('3', Colors.GREEN)} - Cancel\n")
+                    
+                    choice = input(f"{colored('Choose:', Colors.CYAN)} ").strip()
+                    
+                    if choice == "1":
+                        print(f"\n{colored('[INFO]', Colors.BLUE)} Enter new system prompt (type END on a new line to finish):\n")
                         lines = []
                         while True:
                             line = input()
-                            if not line:
+                            if line.strip().upper() == "END":
                                 break
                             lines.append(line)
                         
                         if lines:
-                            new_prompt = "\n".join(lines)
-                            # Save to a temporary variable for this session
-                            globals()['DEONAI_SYSTEM'] = new_prompt
-                            print("[SUCCESS] System prompt updated for this session\n")
+                            new_prompt = "\n".join(lines).strip()
+                            if save_system_prompt(new_prompt):
+                                print(f"\n{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} System prompt saved! Will apply to new conversations.\n")
                         else:
-                            print("[INFO] No changes made\n")
+                            print(f"\n{colored('[INFO]', Colors.BLUE)} No changes made\n")
+                    
+                    elif choice == "2":
+                        if reset_system_prompt():
+                            print(f"\n{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} Reset to default system prompt\n")
+                        else:
+                            print(f"\n{colored('[INFO]', Colors.BLUE)} Already using default prompt\n")
+                    
                 else:
                     # Quick system prompt change
                     new_prompt = parts[1]
-                    globals()['DEONAI_SYSTEM'] = new_prompt
-                    print("[SUCCESS] System prompt updated\n")
+                    if save_system_prompt(new_prompt):
+                        print(f"{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} System prompt updated\n")
                 
                 continue
             
