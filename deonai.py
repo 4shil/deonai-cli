@@ -750,8 +750,42 @@ def chat_mode(api_key, model):
                         print(f"\n{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} Switched to: {colored(model, Colors.CYAN)}\n")
                     continue
                 
-                # For other commands, strip the slash and process as before
-                user_input = user_input[1:]
+                elif command == "undo":
+                    if len(history) >= 2:
+                        history.pop()  # Remove assistant
+                        history.pop()  # Remove user
+                        save_history(history)
+                        print(f"{colored('[INFO]', Colors.BLUE)} Removed last message pair\n")
+                    elif len(history) == 1:
+                        history.pop()
+                        save_history(history)
+                        print(f"{colored('[INFO]', Colors.BLUE)} Removed last message\n")
+                    else:
+                        print(f"{colored('[ERROR]', Colors.RED)} No messages to undo\n")
+                    continue
+                
+                elif command == "status":
+                    print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                    print(f"{colored('DeonAi Status', Colors.CYAN, Colors.BOLD)}")
+                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                    print(f"{colored('Model:', Colors.YELLOW)} {colored(model, Colors.CYAN)}")
+                    print(f"{colored('Messages:', Colors.YELLOW)} {colored(str(len(history)), Colors.CYAN)}")
+                    print(f"{colored('Tokens used:', Colors.YELLOW)} {colored(str(total_tokens), Colors.CYAN)}")
+                    custom_prompt = SYSTEM_PROMPT_FILE.exists()
+                    print(f"{colored('System prompt:', Colors.YELLOW)} {colored('Custom' if custom_prompt else 'Default', Colors.CYAN)}")
+                    print(f"\n{colored('═' * 60, Colors.CYAN)}\n")
+                    continue
+                
+                # For file and other commands starting with /, strip slash and continue to old handlers
+                elif command.startswith(('read', 'ls', 'run', 'init', 'search', 'profile', 'export', 'retry', 'system')):
+                    user_input = user_input[1:]  # Strip the slash
+                    # Will be processed by old handlers below
+                
+                else:
+                    # Unknown slash command
+                    print(f"{colored('[ERROR]', Colors.RED)} Unknown command: /{command}")
+                    print(f"{colored('[INFO]', Colors.BLUE)} Type {colored('/help', Colors.GREEN)} to see available commands\n")
+                    continue
             
             # Old command handling (without slash) for backward compatibility
             if user_input.lower() == "exit":
