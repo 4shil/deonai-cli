@@ -7,6 +7,7 @@ Simple, fast, customized for you. Powered by OpenRouter.
 import sys
 import json
 import requests
+import os
 from pathlib import Path
 
 # DeonAi branding
@@ -28,7 +29,7 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
 MODELS_CACHE_FILE = CONFIG_DIR / "models_cache.json"
 
 # DeonAi personality system prompt
-DEONAI_SYSTEM = """You are DeonAi, a helpful and intelligent CLI assistant.
+DEONAI_SYSTEM = """You are DeonAi, a helpful and intelligent CLI assistant with file operation capabilities.
 
 Core traits:
 - Direct and concise - no fluff
@@ -36,6 +37,26 @@ Core traits:
 - Give code examples when relevant
 - Admit when you don't know something
 - Focus on practical solutions
+
+File operations:
+When the user asks you to create, modify, or write files:
+1. Generate the complete file content
+2. Format it in a code block with the filename
+3. Use this exact format:
+
+WRITE_FILE: filename.ext
+```language
+file content here
+```
+
+Example:
+WRITE_FILE: hello.py
+```python
+print("Hello, World!")
+```
+
+The system will detect this pattern and automatically save the file.
+You can write multiple files in one response.
 """
 
 
@@ -204,6 +225,233 @@ def load_profile(name):
     return profiles.get(name)
 
 
+def read_file(filepath):
+    """Read file content safely"""
+    try:
+        path = Path(filepath).expanduser()
+        
+        # Security check - prevent reading sensitive files
+        forbidden = ['/etc/passwd', '/etc/shadow', '.env', '.ssh/id_rsa']
+        if any(str(path).endswith(f) for f in forbidden):
+            return None, "[ERROR] Cannot read sensitive system files"
+        
+        if not path.exists():
+            return None, f"[ERROR] File not found: {filepath}"
+        
+        if not path.is_file():
+            return None, f"[ERROR] Not a file: {filepath}"
+        
+        # Check file size (max 1MB)
+        if path.stat().st_size > 1_000_000:
+            return None, f"[ERROR] File too large (max 1MB): {filepath}"
+        
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        
+        return content, None
+    except Exception as e:
+        return None, f"[ERROR] Could not read file: {e}"
+
+
+def write_file(filepath, content, mode='w'):
+    """Write content to file safely"""
+    try:
+        path = Path(filepath).expanduser()
+        
+        # Create parent directories if needed
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Security check - prevent overwriting system files
+        forbidden_dirs = ['/etc', '/sys', '/proc', '/dev']
+        if any(str(path).startswith(d) for d in forbidden_dirs):
+            return False, "[ERROR] Cannot write to system directories"
+        
+        with open(path, mode, encoding='utf-8') as f:
+            f.write(content)
+        
+        return True, f"[SUCCESS] Written to: {filepath}"
+    except Exception as e:
+        return False, f"[ERROR] Could not write file: {e}"
+
+
+def list_directory(dirpath='.'):
+    """List directory contents"""
+    try:
+        path = Path(dirpath).expanduser()
+        
+        if not path.exists():
+            return None, f"[ERROR] Directory not found: {dirpath}"
+        
+        if not path.is_dir():
+            return None, f"[ERROR] Not a directory: {dirpath}"
+        
+        items = []
+        for item in sorted(path.iterdir()):
+            item_type = 'DIR' if item.is_dir() else 'FILE'
+            size = item.stat().st_size if item.is_file() else 0
+            items.append((item.name, item_type, size))
+        
+        return items, None
+    except Exception as e:
+        return None, f"[ERROR] Could not list directory: {e}"
+
+
+def parse_and_save_files(response_text, current_dir='.'):
+    """Parse AI response for WRITE_FILE commands and save them"""
+    import re
+    
+    # Pattern: WRITE_FILE: filename.ext\n```language\ncontent\n```
+    pattern = r'WRITE_FILE:\s*([^\n]+)\n```[^\n]*\n(.*?)```'
+    matches = re.findall(pattern, response_text, re.DOTALL)
+    
+    saved_files = []
+    for filename, content in matches:
+        filename = filename.strip()
+        content = content.strip()
+        
+        # Resolve relative to current directory
+        filepath = Path(current_dir) / filename
+        
+        success, message = write_file(str(filepath), content)
+        if success:
+            saved_files.append(filename)
+            print(f"\n{message}")
+        else:
+            print(f"\n{message}")
+    
+    return saved_files
+
+
+def run_code(filepath, language=None):
+    """Execute code file safely"""
+    import subprocess
+    
+    try:
+        path = Path(filepath).expanduser()
+        
+        if not path.exists():
+            return None, f"[ERROR] File not found: {filepath}"
+        
+        # Auto-detect language if not specified
+        if not language:
+            ext = path.suffix.lower()
+            lang_map = {
+                '.py': 'python',
+                '.js': 'node',
+                '.sh': 'bash',
+                '.rb': 'ruby',
+                '.go': 'go run',
+                '.rs': 'rustc',
+            }
+            language = lang_map.get(ext)
+        
+        if not language:
+            return None, f"[ERROR] Unsupported file type: {path.suffix}"
+        
+        # Build command
+        if language == 'python':
+            cmd = ['python3', str(path)]
+        elif language == 'node':
+            cmd = ['node', str(path)]
+        elif language == 'bash':
+            cmd = ['bash', str(path)]
+        elif language == 'go run':
+            cmd = ['go', 'run', str(path)]
+        else:
+            cmd = [language, str(path)]
+        
+        # Execute with timeout
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=path.parent
+        )
+        
+        output = {
+            'stdout': result.stdout,
+            'stderr': result.stderr,
+            'returncode': result.returncode
+        }
+        
+        return output, None
+        
+    except subprocess.TimeoutExpired:
+        return None, "[ERROR] Execution timed out (10s limit)"
+    except FileNotFoundError:
+        return None, f"[ERROR] Interpreter not found for {language}"
+    except Exception as e:
+        return None, f"[ERROR] Execution failed: {e}"
+
+
+def create_project_structure(project_type, project_name):
+    """Create a basic project structure"""
+    try:
+        base_path = Path(project_name)
+        
+        if base_path.exists():
+            return False, f"[ERROR] Directory already exists: {project_name}"
+        
+        templates = {
+            'python': {
+                'dirs': ['src', 'tests', 'docs'],
+                'files': {
+                    'README.md': f"# {project_name}\n\nA Python project",
+                    'requirements.txt': "# Add dependencies here\n",
+                    '.gitignore': "__pycache__/\n*.pyc\n.env\nvenv/\n",
+                    'src/__init__.py': "",
+                    'src/main.py': 'def main():\n    print("Hello from {project_name}")\n\nif __name__ == "__main__":\n    main()\n',
+                    'tests/__init__.py': "",
+                    'tests/test_main.py': "import unittest\n\nclass TestMain(unittest.TestCase):\n    def test_example(self):\n        self.assertTrue(True)\n"
+                }
+            },
+            'node': {
+                'dirs': ['src', 'tests'],
+                'files': {
+                    'README.md': f"# {project_name}\n\nA Node.js project",
+                    'package.json': '{\n  "name": "' + project_name + '",\n  "version": "1.0.0",\n  "main": "src/index.js"\n}',
+                    '.gitignore': "node_modules/\n.env\n",
+                    'src/index.js': 'console.log("Hello from ' + project_name + '");',
+                    'tests/index.test.js': "// Add tests here\n"
+                }
+            },
+            'web': {
+                'dirs': ['css', 'js', 'images'],
+                'files': {
+                    'index.html': '<!DOCTYPE html>\n<html>\n<head>\n    <title>' + project_name + '</title>\n    <link rel="stylesheet" href="css/style.css">\n</head>\n<body>\n    <h1>' + project_name + '</h1>\n    <script src="js/main.js"></script>\n</body>\n</html>',
+                    'css/style.css': 'body {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 20px;\n}\n',
+                    'js/main.js': 'console.log("' + project_name + ' loaded");',
+                    'README.md': f"# {project_name}\n\nA web project"
+                }
+            }
+        }
+        
+        if project_type not in templates:
+            return False, f"[ERROR] Unknown project type: {project_type}"
+        
+        template = templates[project_type]
+        
+        # Create base directory
+        base_path.mkdir(parents=True)
+        
+        # Create subdirectories
+        for dir_name in template['dirs']:
+            (base_path / dir_name).mkdir(parents=True, exist_ok=True)
+        
+        # Create files
+        for file_path, content in template['files'].items():
+            full_path = base_path / file_path
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(full_path, 'w') as f:
+                f.write(content)
+        
+        return True, f"[SUCCESS] Created {project_type} project: {project_name}"
+        
+    except Exception as e:
+        return False, f"[ERROR] Could not create project: {e}"
+
+
 def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
@@ -281,9 +529,109 @@ def chat_mode(api_key, model):
                 print("  retry     - Retry the last message with a different model")
                 print("  system    - Change system prompt")
                 print('  """       - Start multiline input (end with """)')
+                print("  read      - Read file and show content")
+                print("  ls        - List directory contents")
+                print("  run       - Execute a code file")
+                print("  init      - Create a new project (python/node/web)")
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower().startswith("init "):
+                parts = user_input[5:].split()
+                if len(parts) < 2:
+                    print("[ERROR] Usage: init <type> <name>")
+                    print("Types: python, node, web\n")
+                    continue
+                
+                project_type = parts[0]
+                project_name = parts[1]
+                
+                success, message = create_project_structure(project_type, project_name)
+                print(f"\n{message}\n")
+                
+                if success:
+                    items, _ = list_directory(project_name)
+                    if items:
+                        print(f"[INFO] Project structure:")
+                        for name, item_type, size in items:
+                            print(f"  {name}{'/' if item_type == 'DIR' else ''}")
+                        print()
+                continue
+            
+            if user_input.lower().startswith("run "):
+                filepath = user_input[4:].strip()
+                
+                print(f"\n[INFO] Executing: {filepath}")
+                output, error = run_code(filepath)
+                
+                if error:
+                    print(f"{error}\n")
+                else:
+                    if output['returncode'] == 0:
+                        print("[SUCCESS] Execution completed\n")
+                    else:
+                        print(f"[WARNING] Exit code: {output['returncode']}\n")
+                    
+                    if output['stdout']:
+                        print("--- Output ---")
+                        print(output['stdout'])
+                    
+                    if output['stderr']:
+                        print("--- Errors ---")
+                        print(output['stderr'])
+                    
+                    print("--- End ---\n")
+                    
+                    # Add execution result to context
+                    add_ctx = input("Add execution result to context? (y/N): ").strip().lower()
+                    if add_ctx == 'y':
+                        result_msg = f"[Execution of {filepath}]\nExit code: {output['returncode']}\nOutput:\n{output['stdout']}\nErrors:\n{output['stderr']}"
+                        history.append({"role": "user", "content": result_msg})
+                        save_history(history)
+                        print("[INFO] Result added to context\n")
+                continue
+            
+            if user_input.lower().startswith("read "):
+                filepath = user_input[5:].strip()
+                content, error = read_file(filepath)
+                
+                if error:
+                    print(f"\n{error}\n")
+                else:
+                    print(f"\n[INFO] File: {filepath}")
+                    print(f"[INFO] Size: {len(content)} bytes\n")
+                    print("--- Content ---")
+                    print(content)
+                    print("--- End ---\n")
+                    
+                    # Ask if they want to add it to context
+                    add_ctx = input("Add to conversation context? (y/N): ").strip().lower()
+                    if add_ctx == 'y':
+                        context_msg = f"[File: {filepath}]\n```\n{content}\n```"
+                        history.append({"role": "user", "content": context_msg})
+                        save_history(history)
+                        print("[INFO] File added to context. Ask questions about it!\n")
+                continue
+            
+            if user_input.lower().startswith("ls"):
+                parts = user_input.split(maxsplit=1)
+                dirpath = parts[1] if len(parts) > 1 else '.'
+                
+                items, error = list_directory(dirpath)
+                
+                if error:
+                    print(f"\n{error}\n")
+                else:
+                    print(f"\n[INFO] Directory: {dirpath}\n")
+                    for name, item_type, size in items:
+                        if item_type == 'DIR':
+                            print(f"  [DIR]  {name}/")
+                        else:
+                            size_str = f"{size:,} bytes" if size < 1024 else f"{size/1024:.1f} KB"
+                            print(f"  [FILE] {name} ({size_str})")
+                    print()
                 continue
             
             if user_input.lower() == "undo":
@@ -600,18 +948,29 @@ def chat_mode(api_key, model):
                                     continue
                     print("\n")
                     
+                    # Check for file write commands
+                    saved_files = parse_and_save_files(assistant_text)
+                    if saved_files:
+                        print(f"[INFO] Created {len(saved_files)} file(s): {', '.join(saved_files)}\n")
+                    
                     usage = {}
                     tokens_used = 0
                 else:
                     result = response.json()
                     assistant_text = result["choices"][0]["message"]["content"]
                     
+                    print(assistant_text)
+                    
+                    # Check for file write commands
+                    saved_files = parse_and_save_files(assistant_text)
+                    if saved_files:
+                        print(f"\n[INFO] Created {len(saved_files)} file(s): {', '.join(saved_files)}\n")
+                    
                     # Track token usage
                     usage = result.get("usage", {})
                     tokens_used = usage.get("total_tokens", 0)
                     total_tokens += tokens_used
                     
-                    print(assistant_text)
                     if tokens_used > 0:
                         print(f"\n[USAGE] {tokens_used} tokens\n")
                     else:
