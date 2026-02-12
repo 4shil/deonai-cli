@@ -1,16 +1,16 @@
 #!/bin/bash
 # DeonAi CLI Installer
 
-echo "🌊 Installing DeonAi CLI..."
+echo "Installing DeonAi CLI..."
 
 # Check Python
 if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 is required. Please install it first."
+    echo "[ERROR] Python 3 is required. Please install it first."
     exit 1
 fi
 
 # Install dependencies
-echo "📦 Installing dependencies..."
+echo "[INFO] Installing dependencies..."
 pip3 install --user requests
 
 # Copy script to user bin
@@ -23,12 +23,12 @@ chmod +x "$INSTALL_DIR/deonai"
 # Check if ~/.local/bin is in PATH
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
     echo ""
-    echo "⚠️  Add this to your ~/.bashrc or ~/.zshrc:"
+    echo "[WARNING] Add this to your ~/.bashrc or ~/.zshrc:"
     echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
     echo ""
 fi
 
-echo "✅ DeonAi installed!"
+echo "[SUCCESS] DeonAi installed!"
 echo ""
 echo "Run 'deonai --setup' to configure your OpenRouter API key"
 echo "Then run 'deonai' to start chatting"

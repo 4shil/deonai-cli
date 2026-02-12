@@ -1,28 +1,40 @@
-# 🌊 DeonAi CLI
+# DeonAi CLI
 
-Your personal AI assistant in the terminal. Simple, fast, customized. **Now powered by OpenRouter** - access 200+ AI models with one API key!
+Your personal AI assistant in the terminal. Simple, fast, customized. **Powered by OpenRouter** - access 200+ AI models with one API key!
+
+![DeonAi Demo](https://user-images.githubusercontent.com/placeholder/demo.gif)
 
 ## Features
 
-- 🚀 **One-shot queries**: `deonai "explain docker compose"`
-- 💬 **Interactive chat**: `deonai` for conversation mode
-- 🧠 **Memory**: Remembers conversation context
-- 🌐 **200+ Models**: Claude, GPT-4, Gemini, Llama, and more via OpenRouter
-- 🎨 **Branded**: Custom DeonAi personality
-- 🔧 **Customizable**: Easy to modify prompts and behavior
-- 💰 **Cost-effective**: Choose from free or paid models
+- **One-shot queries**: `deonai "explain docker compose"`
+- **Interactive chat**: `deonai` for conversation mode
+- **Memory**: Remembers conversation context
+- **200+ Models**: Claude, GPT-4, Gemini, Llama, and more via OpenRouter
+- **Streaming**: Real-time token-by-token responses
+- **Export**: Save conversations as Markdown or JSON
+- **Search**: Find past messages in history
+- **Token tracking**: Monitor API usage
+- **Quick switch**: Change models on the fly
+- **Customizable**: Easy to modify prompts and behavior
+- **Cost-effective**: Choose from free or paid models
 
 ## Installation
 
+### Linux / macOS
+
 ```bash
-# Clone this repo
 git clone https://github.com/4shil/deonai-cli.git
 cd deonai-cli
-
-# Run installer
 ./install.sh
+deonai --setup
+```
 
-# Setup (paste your OpenRouter API key)
+### Windows
+
+```batch
+git clone https://github.com/4shil/deonai-cli.git
+cd deonai-cli
+install-windows.bat
 deonai --setup
 ```
 
@@ -35,10 +47,15 @@ Get your OpenRouter API key at: https://openrouter.ai/keys
 deonai
 ```
 
-Starts a conversation. Type messages, get responses. Commands:
-- `exit` - quit
-- `clear` - reset conversation
-- `models` - list all available models
+Available commands:
+- `exit` - Quit the application
+- `clear` - Reset conversation history
+- `models` - List all available AI models
+- `switch` - Quick switch to another model
+- `search <query>` - Search conversation history
+- `export` - Export conversation to file
+- `status` - Show current configuration
+- `help` - Show all commands
 
 ### One-Shot Mode
 ```bash
@@ -74,6 +91,37 @@ Config stored in `~/.deonai/config.json`:
 
 To reconfigure: `deonai --setup`
 
+To quick switch: Run `deonai` then type `switch`
+
+## Screenshots
+
+### Chat Mode
+```
+╔══════════════════════════════════════╗
+║         DeonAi CLI v2.0             ║
+║  Your Personal Terminal Assistant   ║
+║      Powered by OpenRouter          ║
+╚══════════════════════════════════════╝
+
+Chat mode - Model: anthropic/claude-sonnet-4
+Type 'help' for commands
+
+You: explain quantum computing
+
+DeonAi: Quantum computing is a type of computing that uses quantum-mechanical
+phenomena like superposition and entanglement to perform calculations...
+
+[USAGE] 245 tokens
+```
+
+### Export Example
+```bash
+You: export
+[SUCCESS] Conversation exported:
+  Markdown: ~/.deonai/conversation_20260212_131500.md
+  JSON: ~/.deonai/conversation_20260212_131500.json
+```
+
 ## Customization
 
 ### Change Personality
@@ -88,10 +136,6 @@ Core traits:
 - [Make it unique]
 """
 ```
-
-### Change Model
-
-Run `deonai --setup` again to choose from 200+ models, or manually edit `~/.deonai/config.json`
 
 ### Free Models
 
@@ -114,28 +158,44 @@ Several models are completely free:
 - `requests` package (installed automatically)
 - OpenRouter API key (from https://openrouter.ai/keys)
 
-## Examples
+## Advanced Usage
 
+### Export and Share Conversations
 ```bash
-# Quick coding help
-deonai "regex to match email addresses"
+# In chat mode
+You: export
+# Creates markdown and JSON files in ~/.deonai/
+```
 
-# Compare models (try different ones)
-deonai --setup  # switch to gemini-2.0-flash-exp:free
-deonai "explain quantum computing"
+### Search History
+```bash
+You: search docker
+[SEARCH] Found 3 matches for 'docker':
+  [12] User: how do I use docker compose
+  [14] Assistant: Docker Compose is a tool for defining...
+  [28] User: docker networking explained
+```
 
-# Use in scripts
-ANSWER=$(deonai "short answer: capital of France")
-echo $ANSWER
+### Switch Models Mid-Conversation
+```bash
+You: switch
+[INFO] Quick model switch
+Popular models:
+  1. anthropic/claude-sonnet-4
+  2. anthropic/claude-opus-4
+  3. google/gemini-2.0-flash-exp:free
+  4. openai/gpt-4o
+  5. meta-llama/llama-3.3-70b-instruct
+  0. Enter custom model ID
 
-# Interactive learning
-deonai  # then type "teach me python generators"
+Choice: 3
+[SUCCESS] Switched to: google/gemini-2.0-flash-exp:free
 ```
 
 ## Uninstall
 
 ```bash
-rm ~/.local/bin/deonai
+rm ~/.local/bin/deonai  # Linux/macOS
 rm -rf ~/.deonai
 ```
 
@@ -145,12 +205,23 @@ MIT - Modify and share freely
 
 ## Changelog
 
+### v2.1 - Feature Enhancement Release
+- Added streaming responses for real-time output
+- Added conversation export (Markdown + JSON)
+- Added token usage tracking
+- Added quick model switching
+- Added conversation search
+- Added help and status commands
+- Improved error handling
+- Added Windows installer
+- Removed emojis for professional appearance
+
 ### v2.0 - OpenRouter Integration
-- ✨ Added support for 200+ models via OpenRouter
-- 🔄 Replaced Anthropic-only API with OpenRouter
-- 📋 Added `models` command to list available models during chat
-- 🆓 Added support for free models (Gemini, Llama)
-- 🎯 Interactive model selection during setup
+- Added support for 200+ models via OpenRouter
+- Replaced Anthropic-only API with OpenRouter
+- Added `models` command to list available models during chat
+- Added support for free models (Gemini, Llama)
+- Interactive model selection during setup
 
 ### v1.0 - Initial Release
 - Basic CLI with Anthropic Claude
@@ -159,4 +230,6 @@ MIT - Modify and share freely
 
 ---
 
-Made with 🌊 by DeonAi | Powered by [OpenRouter](https://openrouter.ai)
+Made by 4shil | Powered by [OpenRouter](https://openrouter.ai)
+
+**Star this repo if you find it useful!**
