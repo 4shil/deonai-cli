@@ -180,6 +180,8 @@ def chat_mode(api_key, model):
     print("Type 'help' for commands\n")
     
     history = load_history()
+    total_tokens = 0
+    
     if history:
         print(f"[INFO] Loaded {len(history)//2} previous messages\n")
     
@@ -266,6 +268,7 @@ def chat_mode(api_key, model):
                 print(f"\n[STATUS] Current Configuration:")
                 print(f"  Model: {model}")
                 print(f"  Messages in history: {len(history)}")
+                print(f"  Total tokens used: {total_tokens}")
                 print(f"  Config: {CONFIG_FILE}\n")
                 continue
             
@@ -292,8 +295,19 @@ def chat_mode(api_key, model):
                 )
                 response.raise_for_status()
                 
-                assistant_text = response.json()["choices"][0]["message"]["content"]
-                print(assistant_text + "\n")
+                result = response.json()
+                assistant_text = result["choices"][0]["message"]["content"]
+                
+                # Track token usage
+                usage = result.get("usage", {})
+                tokens_used = usage.get("total_tokens", 0)
+                total_tokens += tokens_used
+                
+                print(assistant_text)
+                if tokens_used > 0:
+                    print(f"\n[USAGE] {tokens_used} tokens\n")
+                else:
+                    print()
                 
                 history.append({"role": "assistant", "content": assistant_text})
                 save_history(history)
