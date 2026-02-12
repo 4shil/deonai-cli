@@ -259,9 +259,43 @@ def chat_mode(api_key, model):
                 print("  search    - Search conversation history")
                 print("  profile   - Manage profiles (save/load/list)")
                 print("  retry     - Retry the last message with a different model")
+                print("  system    - Change system prompt")
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower().startswith("system"):
+                parts = user_input.split(maxsplit=1)
+                
+                if len(parts) == 1:
+                    print("\n[INFO] Current system prompt:")
+                    print(DEONAI_SYSTEM)
+                    print()
+                    
+                    change = input("Change system prompt? (y/N): ").strip().lower()
+                    if change == "y":
+                        print("\nEnter new system prompt (end with empty line):")
+                        lines = []
+                        while True:
+                            line = input()
+                            if not line:
+                                break
+                            lines.append(line)
+                        
+                        if lines:
+                            new_prompt = "\n".join(lines)
+                            # Save to a temporary variable for this session
+                            globals()['DEONAI_SYSTEM'] = new_prompt
+                            print("[SUCCESS] System prompt updated for this session\n")
+                        else:
+                            print("[INFO] No changes made\n")
+                else:
+                    # Quick system prompt change
+                    new_prompt = parts[1]
+                    globals()['DEONAI_SYSTEM'] = new_prompt
+                    print("[SUCCESS] System prompt updated\n")
+                
                 continue
             
             if user_input.lower() == "retry":
