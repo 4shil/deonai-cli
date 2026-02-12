@@ -10,6 +10,18 @@ from pathlib import Path
 
 CONFIG_DIR = Path.home() / ".deonai"
 CONFIG_FILE = CONFIG_DIR / "config.json"
+HISTORY_FILE = CONFIG_DIR / "history.json"
+
+# DeonAi personality system prompt
+DEONAI_SYSTEM = """You are DeonAi, a helpful and intelligent CLI assistant.
+
+Core traits:
+- Direct and concise - no fluff
+- Technical but friendly
+- Give code examples when relevant
+- Admit when you don't know something
+- Focus on practical solutions
+"""
 
 
 def setup_config():
@@ -68,6 +80,7 @@ def main():
             response = client.messages.create(
                 model=config["model"],
                 max_tokens=4096,
+                system=DEONAI_SYSTEM,
                 messages=[{"role": "user", "content": prompt}]
             )
             
