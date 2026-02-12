@@ -571,24 +571,36 @@ def chat_mode(api_key, model):
                 continue
             
             if user_input.lower() == "help":
-                print("\n[HELP] DeonAi Commands:")
-                print("  exit      - Quit the application")
-                print("  clear     - Reset conversation history")
-                print("  undo      - Remove last message pair from history")
-                print("  models    - List all available AI models")
-                print("  switch    - Quick switch to another model")
-                print("  search    - Search conversation history")
-                print("  profile   - Manage profiles (save/load/list)")
-                print("  retry     - Retry the last message with a different model")
-                print("  system    - Change system prompt")
-                print('  """       - Start multiline input (end with """)')
-                print("  read      - Read file and show content")
-                print("  ls        - List directory contents")
-                print("  run       - Execute a code file")
-                print("  init      - Create a new project (python/node/web)")
-                print("  help      - Show this help message")
-                print("  status    - Show current configuration")
-                print("  export    - Export conversation to file\n")
+                print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                print(f"{colored('DeonAi Commands', Colors.CYAN, Colors.BOLD)}")
+                print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                
+                print(f"{colored('Basic:', Colors.YELLOW, Colors.BOLD)}")
+                print(f"  {colored('exit', Colors.GREEN)}      - Quit the application")
+                print(f"  {colored('clear', Colors.GREEN)}     - Reset conversation history")
+                print(f"  {colored('undo', Colors.GREEN)}      - Remove last message pair")
+                print(f"  {colored('help', Colors.GREEN)}      - Show this help message")
+                print(f"  {colored('status', Colors.GREEN)}    - Show current configuration\n")
+                
+                print(f"{colored('AI Control:', Colors.YELLOW, Colors.BOLD)}")
+                print(f"  {colored('models', Colors.GREEN)}    - List all available AI models")
+                print(f"  {colored('switch', Colors.GREEN)}    - Quick switch to another model")
+                print(f"  {colored('retry', Colors.GREEN)}     - Retry last message with different model")
+                print(f"  {colored('system', Colors.GREEN)}    - Change system prompt")
+                print(f'  {colored(\'"""\', Colors.GREEN)}       - Start multiline input (end with """)\n')
+                
+                print(f"{colored('File Operations:', Colors.YELLOW, Colors.BOLD)}")
+                print(f"  {colored('read', Colors.GREEN)}      - Read file and show content")
+                print(f"  {colored('ls', Colors.GREEN)}        - List directory contents")
+                print(f"  {colored('run', Colors.GREEN)}       - Execute a code file")
+                print(f"  {colored('init', Colors.GREEN)}      - Create new project (python/node/web)\n")
+                
+                print(f"{colored('Utilities:', Colors.YELLOW, Colors.BOLD)}")
+                print(f"  {colored('search', Colors.GREEN)}    - Search conversation history")
+                print(f"  {colored('profile', Colors.GREEN)}   - Manage profiles (save/load/list)")
+                print(f"  {colored('export', Colors.GREEN)}    - Export conversation to file\n")
+                
+                print(f"{colored('═' * 60, Colors.CYAN)}\n")
                 continue
             
             if user_input.lower().startswith("init "):
