@@ -322,6 +322,69 @@ def parse_and_save_files(response_text, current_dir='.'):
     return saved_files
 
 
+def run_code(filepath, language=None):
+    """Execute code file safely"""
+    import subprocess
+    
+    try:
+        path = Path(filepath).expanduser()
+        
+        if not path.exists():
+            return None, f"[ERROR] File not found: {filepath}"
+        
+        # Auto-detect language if not specified
+        if not language:
+            ext = path.suffix.lower()
+            lang_map = {
+                '.py': 'python',
+                '.js': 'node',
+                '.sh': 'bash',
+                '.rb': 'ruby',
+                '.go': 'go run',
+                '.rs': 'rustc',
+            }
+            language = lang_map.get(ext)
+        
+        if not language:
+            return None, f"[ERROR] Unsupported file type: {path.suffix}"
+        
+        # Build command
+        if language == 'python':
+            cmd = ['python3', str(path)]
+        elif language == 'node':
+            cmd = ['node', str(path)]
+        elif language == 'bash':
+            cmd = ['bash', str(path)]
+        elif language == 'go run':
+            cmd = ['go', 'run', str(path)]
+        else:
+            cmd = [language, str(path)]
+        
+        # Execute with timeout
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=path.parent
+        )
+        
+        output = {
+            'stdout': result.stdout,
+            'stderr': result.stderr,
+            'returncode': result.returncode
+        }
+        
+        return output, None
+        
+    except subprocess.TimeoutExpired:
+        return None, "[ERROR] Execution timed out (10s limit)"
+    except FileNotFoundError:
+        return None, f"[ERROR] Interpreter not found for {language}"
+    except Exception as e:
+        return None, f"[ERROR] Execution failed: {e}"
+
+
 def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
@@ -401,9 +464,43 @@ def chat_mode(api_key, model):
                 print('  """       - Start multiline input (end with """)')
                 print("  read      - Read file and show content")
                 print("  ls        - List directory contents")
+                print("  run       - Execute a code file")
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower().startswith("run "):
+                filepath = user_input[4:].strip()
+                
+                print(f"\n[INFO] Executing: {filepath}")
+                output, error = run_code(filepath)
+                
+                if error:
+                    print(f"{error}\n")
+                else:
+                    if output['returncode'] == 0:
+                        print("[SUCCESS] Execution completed\n")
+                    else:
+                        print(f"[WARNING] Exit code: {output['returncode']}\n")
+                    
+                    if output['stdout']:
+                        print("--- Output ---")
+                        print(output['stdout'])
+                    
+                    if output['stderr']:
+                        print("--- Errors ---")
+                        print(output['stderr'])
+                    
+                    print("--- End ---\n")
+                    
+                    # Add execution result to context
+                    add_ctx = input("Add execution result to context? (y/N): ").strip().lower()
+                    if add_ctx == 'y':
+                        result_msg = f"[Execution of {filepath}]\nExit code: {output['returncode']}\nOutput:\n{output['stdout']}\nErrors:\n{output['stderr']}"
+                        history.append({"role": "user", "content": result_msg})
+                        save_history(history)
+                        print("[INFO] Result added to context\n")
                 continue
             
             if user_input.lower().startswith("read "):
