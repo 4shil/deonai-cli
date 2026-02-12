@@ -21,6 +21,7 @@ DEONAI_BANNER = """
 CONFIG_DIR = Path.home() / ".deonai"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
+PROFILES_FILE = CONFIG_DIR / "profiles.json"
 
 # OpenRouter API settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
@@ -173,6 +174,36 @@ def load_history():
     return []
 
 
+def save_profile(name, api_key, model):
+    """Save a named profile"""
+    profiles = {}
+    if PROFILES_FILE.exists():
+        with open(PROFILES_FILE) as f:
+            profiles = json.load(f)
+    
+    profiles[name] = {
+        "api_key": api_key,
+        "model": model
+    }
+    
+    with open(PROFILES_FILE, "w") as f:
+        json.dump(profiles, f, indent=2)
+
+
+def list_profiles():
+    """List all saved profiles"""
+    if not PROFILES_FILE.exists():
+        return {}
+    with open(PROFILES_FILE) as f:
+        return json.load(f)
+
+
+def load_profile(name):
+    """Load a specific profile"""
+    profiles = list_profiles()
+    return profiles.get(name)
+
+
 def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
@@ -181,13 +212,32 @@ def chat_mode(api_key, model):
     
     history = load_history()
     total_tokens = 0
+    multiline_mode = False
     
     if history:
         print(f"[INFO] Loaded {len(history)//2} previous messages\n")
     
     while True:
         try:
-            user_input = input("You: ").strip()
+            # Check for multiline input (triple quotes)
+            if multiline_mode:
+                user_input = input("... ").strip()
+                if user_input == '"""':
+                    multiline_mode = False
+                    user_input = multiline_buffer
+                    multiline_buffer = ""
+                else:
+                    multiline_buffer += user_input + "\n"
+                    continue
+            else:
+                user_input = input("You: ").strip()
+                
+                # Check if starting multiline mode
+                if user_input == '"""':
+                    multiline_mode = True
+                    multiline_buffer = ""
+                    print('[INFO] Multiline mode (type """ to end)')
+                    continue
             
             if not user_input:
                 continue
@@ -223,12 +273,151 @@ def chat_mode(api_key, model):
                 print("\n[HELP] DeonAi Commands:")
                 print("  exit      - Quit the application")
                 print("  clear     - Reset conversation history")
+                print("  undo      - Remove last message pair from history")
                 print("  models    - List all available AI models")
                 print("  switch    - Quick switch to another model")
                 print("  search    - Search conversation history")
+                print("  profile   - Manage profiles (save/load/list)")
+                print("  retry     - Retry the last message with a different model")
+                print("  system    - Change system prompt")
+                print('  """       - Start multiline input (end with """)')
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower() == "undo":
+                if len(history) >= 2:
+                    # Remove last user and assistant message
+                    history.pop()  # Remove assistant
+                    removed = history.pop()  # Remove user
+                    save_history(history)
+                    print(f"[INFO] Removed last message pair\n")
+                elif len(history) == 1:
+                    removed = history.pop()
+                    save_history(history)
+                    print(f"[INFO] Removed last message\n")
+                else:
+                    print("[ERROR] No messages to undo\n")
+                continue
+            
+            if user_input.lower().startswith("system"):
+                parts = user_input.split(maxsplit=1)
+                
+                if len(parts) == 1:
+                    print("\n[INFO] Current system prompt:")
+                    print(DEONAI_SYSTEM)
+                    print()
+                    
+                    change = input("Change system prompt? (y/N): ").strip().lower()
+                    if change == "y":
+                        print("\nEnter new system prompt (end with empty line):")
+                        lines = []
+                        while True:
+                            line = input()
+                            if not line:
+                                break
+                            lines.append(line)
+                        
+                        if lines:
+                            new_prompt = "\n".join(lines)
+                            # Save to a temporary variable for this session
+                            globals()['DEONAI_SYSTEM'] = new_prompt
+                            print("[SUCCESS] System prompt updated for this session\n")
+                        else:
+                            print("[INFO] No changes made\n")
+                else:
+                    # Quick system prompt change
+                    new_prompt = parts[1]
+                    globals()['DEONAI_SYSTEM'] = new_prompt
+                    print("[SUCCESS] System prompt updated\n")
+                
+                continue
+            
+            if user_input.lower() == "retry":
+                if len(history) < 2:
+                    print("[ERROR] No previous message to retry\n")
+                    continue
+                
+                # Remove last assistant response
+                if history[-1]["role"] == "assistant":
+                    history.pop()
+                
+                # Get the last user message
+                if history and history[-1]["role"] == "user":
+                    last_user_msg = history[-1]["content"]
+                    print(f"\n[INFO] Retrying: {last_user_msg[:50]}...")
+                    
+                    # Optionally switch model for retry
+                    retry_choice = input("Switch model for retry? (y/N): ").strip().lower()
+                    if retry_choice == "y":
+                        print("\nQuick models:")
+                        quick_models = [
+                            "anthropic/claude-sonnet-4",
+                            "google/gemini-2.0-flash-exp:free",
+                            "openai/gpt-4o",
+                        ]
+                        for i, m in enumerate(quick_models, 1):
+                            print(f"  {i}. {m}")
+                        
+                        choice = input("Choice (or Enter to keep current): ").strip()
+                        if choice.isdigit() and 1 <= int(choice) <= len(quick_models):
+                            model = quick_models[int(choice) - 1]
+                            print(f"[INFO] Switched to {model}")
+                    
+                    # Re-send the message
+                    print("\nDeonAi: ", end="", flush=True)
+                    user_input = last_user_msg
+                    # Fall through to normal message processing
+                else:
+                    print("[ERROR] Could not find last user message\n")
+                    continue
+            
+            if user_input.lower().startswith("profile"):
+                parts = user_input.split()
+                
+                if len(parts) == 1 or parts[1] == "list":
+                    profiles = list_profiles()
+                    if profiles:
+                        print("\n[INFO] Saved profiles:")
+                        for name, data in profiles.items():
+                            print(f"  - {name}: {data['model']}")
+                        print()
+                    else:
+                        print("[INFO] No saved profiles\n")
+                
+                elif parts[1] == "save":
+                    if len(parts) < 3:
+                        profile_name = input("Profile name: ").strip()
+                    else:
+                        profile_name = parts[2]
+                    
+                    save_profile(profile_name, api_key, model)
+                    print(f"[SUCCESS] Profile '{profile_name}' saved\n")
+                
+                elif parts[1] == "load":
+                    if len(parts) < 3:
+                        profile_name = input("Profile name: ").strip()
+                    else:
+                        profile_name = parts[2]
+                    
+                    profile = load_profile(profile_name)
+                    if profile:
+                        api_key = profile["api_key"]
+                        model = profile["model"]
+                        
+                        # Update active config
+                        config = {"api_key": api_key, "model": model}
+                        with open(CONFIG_FILE, "w") as f:
+                            json.dump(config, f)
+                        
+                        print(f"[SUCCESS] Loaded profile '{profile_name}': {model}\n")
+                    else:
+                        print(f"[ERROR] Profile '{profile_name}' not found\n")
+                
+                else:
+                    print("[ERROR] Usage: profile [list|save|load] [name]\n")
+                
                 continue
             
             if user_input.lower().startswith("search"):
@@ -341,7 +530,25 @@ def chat_mode(api_key, model):
                 print(f"  Model: {model}")
                 print(f"  Messages in history: {len(history)}")
                 print(f"  Total tokens used: {total_tokens}")
-                print(f"  Config: {CONFIG_FILE}\n")
+                print(f"  Config: {CONFIG_FILE}")
+                print(f"  History: {HISTORY_FILE}")
+                
+                # Check file sizes
+                import os
+                if HISTORY_FILE.exists():
+                    size = os.path.getsize(HISTORY_FILE) / 1024
+                    print(f"  History size: {size:.2f} KB")
+                
+                # Show last conversation date
+                if history:
+                    print(f"  Messages: {len(history)} total")
+                
+                # Profile info
+                profiles = list_profiles()
+                if profiles:
+                    print(f"  Saved profiles: {len(profiles)}")
+                
+                print()
                 continue
             
             history.append({"role": "user", "content": user_input})
@@ -429,6 +636,22 @@ def chat_mode(api_key, model):
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--setup":
         setup_config()
+    elif len(sys.argv) > 1 and sys.argv[1] == "--version":
+        print("DeonAi CLI v2.1")
+        print("Powered by OpenRouter")
+        print("https://github.com/4shil/deonai-cli")
+    elif len(sys.argv) > 1 and sys.argv[1] == "--models":
+        # Quick model list without entering chat
+        config = load_config()
+        models = fetch_openrouter_models(config["api_key"])
+        if models:
+            print(f"\n[INFO] {len(models)} models available:\n")
+            for m in models[:50]:
+                print(f"  {m.get('id')}")
+            if len(models) > 50:
+                print(f"\n  ... and {len(models) - 50} more")
+        else:
+            print("[ERROR] Could not fetch models")
     else:
         config = load_config()
         api_key = config["api_key"]
