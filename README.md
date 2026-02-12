@@ -4,6 +4,36 @@ Your personal AI assistant in the terminal with **full coding capabilities**. Si
 
 ![DeonAi Demo](https://user-images.githubusercontent.com/placeholder/demo.gif)
 
+## 🚀 Quick Start
+
+### Linux (Recommended)
+```bash
+git clone https://github.com/4shil/deonai-cli.git
+cd deonai-cli
+./install.sh
+deonai --setup
+```
+
+### macOS
+```bash
+git clone https://github.com/4shil/deonai-cli.git
+cd deonai-cli
+./install.sh
+deonai --setup
+```
+
+### Windows
+```batch
+git clone https://github.com/4shil/deonai-cli.git
+cd deonai-cli
+install-windows.bat
+deonai --setup
+```
+
+📖 **[Linux Users: See LINUX.md for detailed guide](LINUX.md)**
+
+Get your OpenRouter API key at: https://openrouter.ai/keys
+
 ## Features
 
 ### AI Capabilities
@@ -41,6 +71,22 @@ cd deonai-cli
 ./install.sh
 deonai --setup
 ```
+
+**Supported Linux Distributions:**
+- Ubuntu / Debian
+- Fedora / RHEL / CentOS
+- Arch Linux
+- Linux Mint / Pop!_OS
+- Any distro with Python 3.7+
+
+**Features:**
+- ✅ Automatic OS detection
+- ✅ Auto-configure PATH
+- ✅ Desktop entry creation
+- ✅ Colorama support
+- ✅ One-command uninstall
+
+📖 **[Complete Linux Guide →](LINUX.md)**
 
 ### Windows
 
@@ -275,6 +321,27 @@ DeonAi: [creates code with type hints and docs]
 - **Free models available** - Gemini, Llama, and more
 
 ## Changelog
+
+### v2.7 - Major UI Upgrade ✨
+- Beautiful animations (loading spinners, typing indicators)
+- Enhanced color scheme with ocean/cyan theme
+- Improved setup UI with emojis and progress
+- Slash commands for cleaner UX
+- Comprehensive bug fixes
+
+### v2.6 - Customization
+- Persistent custom system prompts
+- Save/load/reset AI personality
+- Enhanced model switching
+
+### v2.5 - Slash Commands
+- `/` prefix for all commands
+- Cleaner separation from AI chat
+
+### v2.4 - Beautiful CLI
+- Colors and ASCII art banner
+- Auto-update with `--upgrade`
+- Organized help menu
 
 ### v2.3 - Coding Features Release
 - Added file reading, writing, and directory listing
