@@ -212,13 +212,32 @@ def chat_mode(api_key, model):
     
     history = load_history()
     total_tokens = 0
+    multiline_mode = False
     
     if history:
         print(f"[INFO] Loaded {len(history)//2} previous messages\n")
     
     while True:
         try:
-            user_input = input("You: ").strip()
+            # Check for multiline input (triple quotes)
+            if multiline_mode:
+                user_input = input("... ").strip()
+                if user_input == '"""':
+                    multiline_mode = False
+                    user_input = multiline_buffer
+                    multiline_buffer = ""
+                else:
+                    multiline_buffer += user_input + "\n"
+                    continue
+            else:
+                user_input = input("You: ").strip()
+                
+                # Check if starting multiline mode
+                if user_input == '"""':
+                    multiline_mode = True
+                    multiline_buffer = ""
+                    print('[INFO] Multiline mode (type """ to end)')
+                    continue
             
             if not user_input:
                 continue
@@ -260,6 +279,7 @@ def chat_mode(api_key, model):
                 print("  profile   - Manage profiles (save/load/list)")
                 print("  retry     - Retry the last message with a different model")
                 print("  system    - Change system prompt")
+                print('  """       - Start multiline input (end with """)')
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
