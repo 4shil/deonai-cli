@@ -9,22 +9,32 @@ import json
 import requests
 import os
 import re
+import threading
+import time
 from pathlib import Path
 
 # Color codes for beautiful CLI
 class Colors:
-    # Main palette - Ocean/Cyan theme
+    # Enhanced color palette - Modern theme
     CYAN = '\033[96m'
     BLUE = '\033[94m'
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
     MAGENTA = '\033[95m'
+    WHITE = '\033[97m'
+    
+    # Additional colors
+    BRIGHT_CYAN = '\033[96m'
+    BRIGHT_GREEN = '\033[92m'
+    BRIGHT_YELLOW = '\033[93m'
+    BRIGHT_MAGENTA = '\033[95m'
     
     # Styles
     BOLD = '\033[1m'
     DIM = '\033[2m'
     UNDERLINE = '\033[4m'
+    BLINK = '\033[5m'
     
     # Reset
     RESET = '\033[0m'
@@ -38,9 +48,15 @@ class Colors:
         Colors.YELLOW = ''
         Colors.RED = ''
         Colors.MAGENTA = ''
+        Colors.WHITE = ''
+        Colors.BRIGHT_CYAN = ''
+        Colors.BRIGHT_GREEN = ''
+        Colors.BRIGHT_YELLOW = ''
+        Colors.BRIGHT_MAGENTA = ''
         Colors.BOLD = ''
         Colors.DIM = ''
         Colors.UNDERLINE = ''
+        Colors.BLINK = ''
         Colors.RESET = ''
 
 # Enable colors on Windows
@@ -54,6 +70,72 @@ if sys.platform == 'win32':
 def colored(text, color='', style=''):
     """Apply color and style to text"""
     return f"{style}{color}{text}{Colors.RESET}"
+
+
+class LoadingAnimation:
+    """Animated loading spinner"""
+    def __init__(self, message="Processing"):
+        self.message = message
+        self.running = False
+        self.thread = None
+        # Cool spinner frames
+        self.frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+        self.current_frame = 0
+    
+    def _animate(self):
+        """Animation loop"""
+        while self.running:
+            frame = self.frames[self.current_frame % len(self.frames)]
+            sys.stdout.write(f'\r{colored(frame, Colors.CYAN)} {colored(self.message, Colors.DIM)}...')
+            sys.stdout.flush()
+            self.current_frame += 1
+            time.sleep(0.08)
+    
+    def start(self):
+        """Start the animation"""
+        self.running = True
+        self.thread = threading.Thread(target=self._animate, daemon=True)
+        self.thread.start()
+    
+    def stop(self):
+        """Stop the animation"""
+        self.running = False
+        if self.thread:
+            self.thread.join()
+        sys.stdout.write('\r' + ' ' * (len(self.message) + 20) + '\r')
+        sys.stdout.flush()
+
+
+class TypingAnimation:
+    """Animated typing indicator for AI responses"""
+    def __init__(self):
+        self.running = False
+        self.thread = None
+        self.dots = 0
+    
+    def _animate(self):
+        """Animation loop"""
+        while self.running:
+            dots = '.' * (self.dots % 4)
+            sys.stdout.write(f'\r{colored("DeonAi:", Colors.MAGENTA, Colors.BOLD)} {colored("thinking", Colors.DIM)}{dots}   ')
+            sys.stdout.flush()
+            self.dots += 1
+            time.sleep(0.3)
+    
+    def start(self):
+        """Start the animation"""
+        self.running = True
+        self.thread = threading.Thread(target=self._animate, daemon=True)
+        self.thread.start()
+    
+    def stop(self):
+        """Stop the animation"""
+        self.running = False
+        if self.thread:
+            self.thread.join()
+        sys.stdout.write('\r' + ' ' * 50 + '\r')
+        sys.stdout.flush()
+
 
 # DeonAi branding with beautiful ASCII art
 DEONAI_BANNER = f"""
