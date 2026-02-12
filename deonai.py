@@ -161,6 +161,7 @@ CONFIG_DIR = Path.home() / ".deonai"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
 PROFILES_FILE = CONFIG_DIR / "profiles.json"
+SYSTEM_PROMPT_FILE = CONFIG_DIR / "system_prompt.txt"
 
 # OpenRouter API settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
