@@ -21,6 +21,7 @@ DEONAI_BANNER = """
 CONFIG_DIR = Path.home() / ".deonai"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
+PROFILES_FILE = CONFIG_DIR / "profiles.json"
 
 # OpenRouter API settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
@@ -173,6 +174,36 @@ def load_history():
     return []
 
 
+def save_profile(name, api_key, model):
+    """Save a named profile"""
+    profiles = {}
+    if PROFILES_FILE.exists():
+        with open(PROFILES_FILE) as f:
+            profiles = json.load(f)
+    
+    profiles[name] = {
+        "api_key": api_key,
+        "model": model
+    }
+    
+    with open(PROFILES_FILE, "w") as f:
+        json.dump(profiles, f, indent=2)
+
+
+def list_profiles():
+    """List all saved profiles"""
+    if not PROFILES_FILE.exists():
+        return {}
+    with open(PROFILES_FILE) as f:
+        return json.load(f)
+
+
+def load_profile(name):
+    """Load a specific profile"""
+    profiles = list_profiles()
+    return profiles.get(name)
+
+
 def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
@@ -226,9 +257,57 @@ def chat_mode(api_key, model):
                 print("  models    - List all available AI models")
                 print("  switch    - Quick switch to another model")
                 print("  search    - Search conversation history")
+                print("  profile   - Manage profiles (save/load/list)")
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower().startswith("profile"):
+                parts = user_input.split()
+                
+                if len(parts) == 1 or parts[1] == "list":
+                    profiles = list_profiles()
+                    if profiles:
+                        print("\n[INFO] Saved profiles:")
+                        for name, data in profiles.items():
+                            print(f"  - {name}: {data['model']}")
+                        print()
+                    else:
+                        print("[INFO] No saved profiles\n")
+                
+                elif parts[1] == "save":
+                    if len(parts) < 3:
+                        profile_name = input("Profile name: ").strip()
+                    else:
+                        profile_name = parts[2]
+                    
+                    save_profile(profile_name, api_key, model)
+                    print(f"[SUCCESS] Profile '{profile_name}' saved\n")
+                
+                elif parts[1] == "load":
+                    if len(parts) < 3:
+                        profile_name = input("Profile name: ").strip()
+                    else:
+                        profile_name = parts[2]
+                    
+                    profile = load_profile(profile_name)
+                    if profile:
+                        api_key = profile["api_key"]
+                        model = profile["model"]
+                        
+                        # Update active config
+                        config = {"api_key": api_key, "model": model}
+                        with open(CONFIG_FILE, "w") as f:
+                            json.dump(config, f)
+                        
+                        print(f"[SUCCESS] Loaded profile '{profile_name}': {model}\n")
+                    else:
+                        print(f"[ERROR] Profile '{profile_name}' not found\n")
+                
+                else:
+                    print("[ERROR] Usage: profile [list|save|load] [name]\n")
+                
                 continue
             
             if user_input.lower().startswith("search"):
