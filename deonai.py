@@ -444,7 +444,7 @@ def create_project_structure(project_type, project_name):
         base_path = Path(project_name)
         
         if base_path.exists():
-            return False, f"[ERROR] Directory already exists: {project_name}"
+            return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Directory already exists: {project_name}"
         
         templates = {
             'python': {
@@ -481,7 +481,7 @@ def create_project_structure(project_type, project_name):
         }
         
         if project_type not in templates:
-            return False, f"[ERROR] Unknown project type: {project_type}"
+            return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Unknown project type: {project_type}"
         
         template = templates[project_type]
         
@@ -499,10 +499,79 @@ def create_project_structure(project_type, project_name):
             with open(full_path, 'w') as f:
                 f.write(content)
         
-        return True, f"[SUCCESS] Created {project_type} project: {project_name}"
+        return True, colored("[SUCCESS]", Colors.GREEN, Colors.BOLD) + f" Created {colored(project_type, Colors.CYAN)} project: {colored(project_name, Colors.CYAN)}"
         
     except Exception as e:
-        return False, f"[ERROR] Could not create project: {e}"
+        return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Could not create project: {e}"
+
+
+def update_from_github():
+    """Update DeonAi CLI from GitHub repository"""
+    import subprocess
+    
+    print(f"\n{colored('═' * 60, Colors.CYAN)}")
+    print(f"{colored('DeonAi Auto-Update', Colors.CYAN, Colors.BOLD)}")
+    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+    
+    repo_url = "https://github.com/4shil/deonai-cli.git"
+    
+    try:
+        # Get current script location
+        script_path = Path(__file__).resolve()
+        repo_dir = script_path.parent
+        
+        print(f"{colored('[INFO]', Colors.BLUE)} Checking for updates...")
+        print(f"{colored('[INFO]', Colors.BLUE)} Repository: {colored(repo_url, Colors.CYAN)}\n")
+        
+        # Check if we're in a git repo
+        is_git_repo = (repo_dir / '.git').exists()
+        
+        if is_git_repo:
+            # Pull latest changes
+            print(f"{colored('[INFO]', Colors.BLUE)} Pulling latest changes...\n")
+            
+            result = subprocess.run(
+                ['git', 'pull', 'origin', 'main'],
+                cwd=repo_dir,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                if "Already up to date" in result.stdout:
+                    print(f"{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} You are already on the latest version!\n")
+                else:
+                    print(f"{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} Updated successfully!")
+                    print(f"\n{Colors.DIM}{result.stdout}{Colors.RESET}\n")
+                    print(f"{colored('[INFO]', Colors.BLUE)} Please restart DeonAi to use the new version.\n")
+            else:
+                print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Update failed:\n")
+                print(f"{Colors.DIM}{result.stderr}{Colors.RESET}\n")
+                return False
+        else:
+            # Not a git repo, download fresh copy
+            print(f"{colored('[INFO]', Colors.BLUE)} Not installed via git. Downloading fresh copy...\n")
+            print(f"{colored('[INFO]', Colors.YELLOW)} Manual update required:")
+            print(f"  1. cd ~")
+            print(f"  2. rm -rf deonai-cli")
+            print(f"  3. git clone {repo_url}")
+            print(f"  4. cd deonai-cli")
+            print(f"  5. ./install.sh\n")
+            return False
+        
+        return True
+        
+    except FileNotFoundError:
+        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Git not installed")
+        print(f"{colored('[INFO]', Colors.YELLOW)} Install git to use auto-update\n")
+        return False
+    except subprocess.TimeoutExpired:
+        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Update timed out\n")
+        return False
+    except Exception as e:
+        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Update failed: {e}\n")
+        return False
 
 
 def chat_mode(api_key, model):
@@ -1061,9 +1130,12 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--setup":
         setup_config()
     elif len(sys.argv) > 1 and sys.argv[1] == "--version":
-        print("DeonAi CLI v2.1")
-        print("Powered by OpenRouter")
-        print("https://github.com/4shil/deonai-cli")
+        print(DEONAI_BANNER)
+        print(f"{colored('Version:', Colors.CYAN, Colors.BOLD)} 2.4")
+        print(f"{colored('Repository:', Colors.CYAN, Colors.BOLD)} https://github.com/4shil/deonai-cli")
+        print(f"{colored('Powered by:', Colors.CYAN, Colors.BOLD)} OpenRouter\n")
+    elif len(sys.argv) > 1 and sys.argv[1] == "--upgrade":
+        update_from_github()
     elif len(sys.argv) > 1 and sys.argv[1] == "--models":
         # Quick model list without entering chat
         config = load_config()
