@@ -429,6 +429,22 @@ def chat_mode(api_key, model):
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--setup":
         setup_config()
+    elif len(sys.argv) > 1 and sys.argv[1] == "--version":
+        print("DeonAi CLI v2.1")
+        print("Powered by OpenRouter")
+        print("https://github.com/4shil/deonai-cli")
+    elif len(sys.argv) > 1 and sys.argv[1] == "--models":
+        # Quick model list without entering chat
+        config = load_config()
+        models = fetch_openrouter_models(config["api_key"])
+        if models:
+            print(f"\n[INFO] {len(models)} models available:\n")
+            for m in models[:50]:
+                print(f"  {m.get('id')}")
+            if len(models) > 50:
+                print(f"\n  ... and {len(models) - 50} more")
+        else:
+            print("[ERROR] Could not fetch models")
     else:
         config = load_config()
         api_key = config["api_key"]
