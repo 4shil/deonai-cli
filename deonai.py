@@ -273,6 +273,7 @@ def chat_mode(api_key, model):
                 print("\n[HELP] DeonAi Commands:")
                 print("  exit      - Quit the application")
                 print("  clear     - Reset conversation history")
+                print("  undo      - Remove last message pair from history")
                 print("  models    - List all available AI models")
                 print("  switch    - Quick switch to another model")
                 print("  search    - Search conversation history")
@@ -283,6 +284,21 @@ def chat_mode(api_key, model):
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower() == "undo":
+                if len(history) >= 2:
+                    # Remove last user and assistant message
+                    history.pop()  # Remove assistant
+                    removed = history.pop()  # Remove user
+                    save_history(history)
+                    print(f"[INFO] Removed last message pair\n")
+                elif len(history) == 1:
+                    removed = history.pop()
+                    save_history(history)
+                    print(f"[INFO] Removed last message\n")
+                else:
+                    print("[ERROR] No messages to undo\n")
                 continue
             
             if user_input.lower().startswith("system"):
@@ -514,7 +530,25 @@ def chat_mode(api_key, model):
                 print(f"  Model: {model}")
                 print(f"  Messages in history: {len(history)}")
                 print(f"  Total tokens used: {total_tokens}")
-                print(f"  Config: {CONFIG_FILE}\n")
+                print(f"  Config: {CONFIG_FILE}")
+                print(f"  History: {HISTORY_FILE}")
+                
+                # Check file sizes
+                import os
+                if HISTORY_FILE.exists():
+                    size = os.path.getsize(HISTORY_FILE) / 1024
+                    print(f"  History size: {size:.2f} KB")
+                
+                # Show last conversation date
+                if history:
+                    print(f"  Messages: {len(history)} total")
+                
+                # Profile info
+                profiles = list_profiles()
+                if profiles:
+                    print(f"  Saved profiles: {len(profiles)}")
+                
+                print()
                 continue
             
             history.append({"role": "user", "content": user_input})
