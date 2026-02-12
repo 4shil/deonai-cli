@@ -101,7 +101,7 @@ class LoadingAnimation:
         """Stop the animation"""
         self.running = False
         if self.thread:
-            self.thread.join()
+            self.thread.join(timeout=1.0)  # Add timeout to prevent hanging
         sys.stdout.write('\r' + ' ' * (len(self.message) + 20) + '\r')
         sys.stdout.flush()
 
@@ -132,7 +132,7 @@ class TypingAnimation:
         """Stop the animation"""
         self.running = False
         if self.thread:
-            self.thread.join()
+            self.thread.join(timeout=1.0)  # Add timeout to prevent hanging
         sys.stdout.write('\r' + ' ' * 50 + '\r')
         sys.stdout.flush()
 
@@ -161,6 +161,7 @@ CONFIG_DIR = Path.home() / ".deonai"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
 PROFILES_FILE = CONFIG_DIR / "profiles.json"
+SYSTEM_PROMPT_FILE = CONFIG_DIR / "system_prompt.txt"
 
 # OpenRouter API settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
@@ -350,24 +351,42 @@ def setup_config():
 def load_config():
     """Load existing config"""
     if not CONFIG_FILE.exists():
-        print("Run 'deonai --setup' first")
+        print(f"{colored('[ERROR]', Colors.RED)} Run 'deonai --setup' first")
         sys.exit(1)
     
-    with open(CONFIG_FILE) as f:
-        return json.load(f)
+    try:
+        with open(CONFIG_FILE) as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        print(f"{colored('[ERROR]', Colors.RED)} Config file is corrupted")
+        print(f"{Colors.DIM}Run 'deonai --setup' to fix{Colors.RESET}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"{colored('[ERROR]', Colors.RED)} Could not load config: {e}")
+        sys.exit(1)
 
 
 def save_history(history):
     """Save conversation history"""
-    with open(HISTORY_FILE, "w") as f:
-        json.dump(history, f)
+    try:
+        CONFIG_DIR.mkdir(exist_ok=True, parents=True)
+        with open(HISTORY_FILE, "w") as f:
+            json.dump(history, f)
+    except Exception as e:
+        print(f"{colored('[WARNING]', Colors.YELLOW)} Could not save history: {e}")
 
 
 def load_history():
     """Load conversation history"""
     if HISTORY_FILE.exists():
-        with open(HISTORY_FILE) as f:
-            return json.load(f)
+        try:
+            with open(HISTORY_FILE) as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print(f"{colored('[WARNING]', Colors.YELLOW)} History file corrupted, starting fresh")
+            return []
+        except Exception:
+            return []
     return []
 
 
@@ -1118,17 +1137,18 @@ def chat_mode(api_key, model):
             
             if user_input.lower() == "retry":
                 if len(history) < 2:
-                    print("[ERROR] No previous message to retry\n")
+                    print(f"{colored('[ERROR]', Colors.RED)} No previous message to retry\n")
                     continue
                 
-                # Remove last assistant response
-                if history[-1]["role"] == "assistant":
+                # Remove last assistant response if exists
+                if history and history[-1]["role"] == "assistant":
                     history.pop()
                 
-                # Get the last user message
+                # Get the last user message - verify it exists and is user role
                 if history and history[-1]["role"] == "user":
                     last_user_msg = history[-1]["content"]
-                    print(f"\n[INFO] Retrying: {last_user_msg[:50]}...")
+                    print(f"\n{colored('[INFO]', Colors.BLUE)} Retrying: {colored(last_user_msg[:50], Colors.DIM)}...")
+                    save_history(history)  # Save after removing assistant message
                     
                     # Optionally switch model for retry
                     retry_choice = input("Switch model for retry? (y/N): ").strip().lower()
@@ -1395,7 +1415,8 @@ def chat_mode(api_key, model):
                         print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} No response received from model")
                         print(f"{colored('[INFO]', Colors.BLUE)} This model might not support streaming or have issues")
                         print(f"{Colors.DIM}Try switching to a different model with {colored('/switch', Colors.GREEN)}{Colors.RESET}\n")
-                        history.pop()  # Remove user message
+                        if history:  # Safety check
+                            history.pop()  # Remove user message
                         continue
                     
                     print("\n")
@@ -1414,7 +1435,8 @@ def chat_mode(api_key, model):
                     if "choices" not in result or not result["choices"]:
                         print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Invalid response from API")
                         print(f"{colored('[INFO]', Colors.BLUE)} Try a different model with {colored('/switch', Colors.GREEN)}\n")
-                        history.pop()
+                        if history:  # Safety check
+                            history.pop()
                         continue
                     
                     assistant_text = result["choices"][0]["message"]["content"]
@@ -1422,7 +1444,8 @@ def chat_mode(api_key, model):
                     if not assistant_text:
                         print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Empty response from model")
                         print(f"{Colors.DIM}Try switching models or rephrasing your question{Colors.RESET}\n")
-                        history.pop()
+                        if history:  # Safety check
+                            history.pop()
                         continue
                     
                     print(assistant_text)
@@ -1448,21 +1471,30 @@ def chat_mode(api_key, model):
             except requests.exceptions.Timeout:
                 typing.stop()
                 print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Request timed out. Try again.\n")
-                history.pop()  # Remove user message since it failed
+                if history:  # Safety check
+                    history.pop()  # Remove user message since it failed
             except requests.exceptions.RequestException as e:
                 typing.stop()
                 print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} API Error: {e}\n")
-                history.pop()  # Remove user message since it failed
+                if history:  # Safety check
+                    history.pop()  # Remove user message since it failed
             except Exception as e:
                 typing.stop()
                 print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Unexpected error: {e}\n")
-                history.pop()
+                if history:  # Safety check
+                    history.pop()
             
         except KeyboardInterrupt:
-            print("\n\nGoodbye!")
+            # Stop typing animation if running
+            if 'typing' in locals():
+                typing.stop()
+            print(f"\n\n{colored('Goodbye!', Colors.CYAN, Colors.BOLD)} 👋\n")
             break
         except Exception as e:
-            print(f"\n[ERROR] {e}\n")
+            # Stop typing animation if running
+            if 'typing' in locals():
+                typing.stop()
+            print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} {e}\n")
 
 
 def main():
@@ -1470,7 +1502,7 @@ def main():
         setup_config()
     elif len(sys.argv) > 1 and sys.argv[1] == "--version":
         print(DEONAI_BANNER)
-        print(f"{colored('Version:', Colors.CYAN, Colors.BOLD)} 2.4")
+        print(f"{colored('Version:', Colors.CYAN, Colors.BOLD)} 2.7")
         print(f"{colored('Repository:', Colors.CYAN, Colors.BOLD)} https://github.com/4shil/deonai-cli")
         print(f"{colored('Powered by:', Colors.CYAN, Colors.BOLD)} OpenRouter\n")
     elif len(sys.argv) > 1 and sys.argv[1] == "--upgrade":
