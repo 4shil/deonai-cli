@@ -8,15 +8,68 @@ import sys
 import json
 import requests
 import os
+import re
 from pathlib import Path
 
-# DeonAi branding
-DEONAI_BANNER = """
-╔══════════════════════════════════════╗
-║         DeonAi CLI v2.0             ║
-║  Your Personal Terminal Assistant   ║
-║      Powered by OpenRouter          ║
-╚══════════════════════════════════════╝
+# Color codes for beautiful CLI
+class Colors:
+    # Main palette - Ocean/Cyan theme
+    CYAN = '\033[96m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    MAGENTA = '\033[95m'
+    
+    # Styles
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+    UNDERLINE = '\033[4m'
+    
+    # Reset
+    RESET = '\033[0m'
+    
+    @staticmethod
+    def disable():
+        """Disable colors (for Windows compatibility)"""
+        Colors.CYAN = ''
+        Colors.BLUE = ''
+        Colors.GREEN = ''
+        Colors.YELLOW = ''
+        Colors.RED = ''
+        Colors.MAGENTA = ''
+        Colors.BOLD = ''
+        Colors.DIM = ''
+        Colors.UNDERLINE = ''
+        Colors.RESET = ''
+
+# Enable colors on Windows
+if sys.platform == 'win32':
+    try:
+        import colorama
+        colorama.init()
+    except ImportError:
+        Colors.disable()
+
+def colored(text, color='', style=''):
+    """Apply color and style to text"""
+    return f"{style}{color}{text}{Colors.RESET}"
+
+# DeonAi branding with beautiful ASCII art
+DEONAI_BANNER = f"""
+{Colors.CYAN}{Colors.BOLD}╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   ██████╗ ███████╗ ██████╗ ███╗   ██╗     █████╗ ██╗     ║
+║   ██╔══██╗██╔════╝██╔═══██╗████╗  ██║    ██╔══██╗██║     ║
+║   ██║  ██║█████╗  ██║   ██║██╔██╗ ██║    ███████║██║     ║
+║   ██║  ██║██╔══╝  ██║   ██║██║╚██╗██║    ██╔══██║██║     ║
+║   ██████╔╝███████╗╚██████╔╝██║ ╚████║    ██║  ██║██║     ║
+║   ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝╚═╝     ║
+║                                                           ║
+║        {Colors.MAGENTA}Your Personal AI Coding Assistant{Colors.CYAN}              ║
+║                {Colors.DIM}v2.4 • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}                ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝{Colors.RESET}
 """
 
 CONFIG_DIR = Path.home() / ".deonai"
