@@ -286,24 +286,24 @@ def read_file(filepath):
         # Security check - prevent reading sensitive files
         forbidden = ['/etc/passwd', '/etc/shadow', '.env', '.ssh/id_rsa']
         if any(str(path).endswith(f) for f in forbidden):
-            return None, "[ERROR] Cannot read sensitive system files"
+            return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + " Cannot read sensitive system files"
         
         if not path.exists():
-            return None, f"[ERROR] File not found: {filepath}"
+            return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" File not found: {filepath}"
         
         if not path.is_file():
-            return None, f"[ERROR] Not a file: {filepath}"
+            return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Not a file: {filepath}"
         
         # Check file size (max 1MB)
         if path.stat().st_size > 1_000_000:
-            return None, f"[ERROR] File too large (max 1MB): {filepath}"
+            return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" File too large (max 1MB): {filepath}"
         
         with open(path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
         
         return content, None
     except Exception as e:
-        return None, f"[ERROR] Could not read file: {e}"
+        return None, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Could not read file: {e}"
 
 
 def write_file(filepath, content, mode='w'):
@@ -317,14 +317,14 @@ def write_file(filepath, content, mode='w'):
         # Security check - prevent overwriting system files
         forbidden_dirs = ['/etc', '/sys', '/proc', '/dev']
         if any(str(path).startswith(d) for d in forbidden_dirs):
-            return False, "[ERROR] Cannot write to system directories"
+            return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + " Cannot write to system directories"
         
         with open(path, mode, encoding='utf-8') as f:
             f.write(content)
         
-        return True, f"[SUCCESS] Written to: {filepath}"
+        return True, colored("[SUCCESS]", Colors.GREEN, Colors.BOLD) + f" Written to: {colored(filepath, Colors.CYAN)}"
     except Exception as e:
-        return False, f"[ERROR] Could not write file: {e}"
+        return False, colored("[ERROR]", Colors.RED, Colors.BOLD) + f" Could not write file: {e}"
 
 
 def list_directory(dirpath='.'):
@@ -508,21 +508,21 @@ def create_project_structure(project_type, project_name):
 def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
-    print(f"Chat mode - Model: {model}")
-    print("Type 'help' for commands\n")
+    print(f"{colored('Chat Mode', Colors.CYAN, Colors.BOLD)} - Model: {colored(model, Colors.MAGENTA)}")
+    print(f"{Colors.DIM}Type 'help' for commands{Colors.RESET}\n")
     
     history = load_history()
     total_tokens = 0
     multiline_mode = False
     
     if history:
-        print(f"[INFO] Loaded {len(history)//2} previous messages\n")
+        print(f"{colored('[INFO]', Colors.BLUE)} Loaded {colored(str(len(history)//2), Colors.CYAN)} previous messages\n")
     
     while True:
         try:
             # Check for multiline input (triple quotes)
             if multiline_mode:
-                user_input = input("... ").strip()
+                user_input = input(f"{Colors.DIM}... {Colors.RESET}").strip()
                 if user_input == '"""':
                     multiline_mode = False
                     user_input = multiline_buffer
@@ -531,20 +531,20 @@ def chat_mode(api_key, model):
                     multiline_buffer += user_input + "\n"
                     continue
             else:
-                user_input = input("You: ").strip()
+                user_input = input(f"{colored('You:', Colors.GREEN, Colors.BOLD)} ").strip()
                 
                 # Check if starting multiline mode
                 if user_input == '"""':
                     multiline_mode = True
                     multiline_buffer = ""
-                    print('[INFO] Multiline mode (type """ to end)')
+                    print(colored('[INFO]', Colors.BLUE) + ' Multiline mode (type """ to end)')
                     continue
             
             if not user_input:
                 continue
             
             if user_input.lower() == "exit":
-                print("\nGoodbye!")
+                print(f"\n{colored('Goodbye!', Colors.CYAN, Colors.BOLD)} 👋\n")
                 break
             
             if user_input.lower() == "clear":
@@ -954,7 +954,7 @@ def chat_mode(api_key, model):
             
             history.append({"role": "user", "content": user_input})
             
-            print("\nDeonAi: ", end="", flush=True)
+            print(f"\n{colored('DeonAi:', Colors.MAGENTA, Colors.BOLD)} ", end="", flush=True)
             
             # Call OpenRouter API
             try:
