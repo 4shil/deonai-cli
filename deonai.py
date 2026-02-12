@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-DeonAi CLI - Configuration system
+DeonAi CLI - Anthropic Claude Integration
 """
 
 import sys
 import json
+import anthropic
 from pathlib import Path
 
 CONFIG_DIR = Path.home() / ".deonai"
@@ -21,8 +22,21 @@ def setup_config():
         print("⚠️  Invalid API key format")
         sys.exit(1)
     
+    # Test the API key
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        client.messages.create(
+            model="claude-sonnet-4.5",
+            max_tokens=10,
+            messages=[{"role": "user", "content": "test"}]
+        )
+        print("✓ API key verified!")
+    except Exception as e:
+        print(f"✗ API key test failed: {e}")
+        sys.exit(1)
+    
     CONFIG_DIR.mkdir(exist_ok=True)
-    config = {"api_key": api_key}
+    config = {"api_key": api_key, "model": "claude-sonnet-4.5"}
     
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f)
