@@ -353,9 +353,52 @@ def chat_mode(api_key, model):
                 print("  retry     - Retry the last message with a different model")
                 print("  system    - Change system prompt")
                 print('  """       - Start multiline input (end with """)')
+                print("  read      - Read file and show content")
+                print("  ls        - List directory contents")
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower().startswith("read "):
+                filepath = user_input[5:].strip()
+                content, error = read_file(filepath)
+                
+                if error:
+                    print(f"\n{error}\n")
+                else:
+                    print(f"\n[INFO] File: {filepath}")
+                    print(f"[INFO] Size: {len(content)} bytes\n")
+                    print("--- Content ---")
+                    print(content)
+                    print("--- End ---\n")
+                    
+                    # Ask if they want to add it to context
+                    add_ctx = input("Add to conversation context? (y/N): ").strip().lower()
+                    if add_ctx == 'y':
+                        context_msg = f"[File: {filepath}]\n```\n{content}\n```"
+                        history.append({"role": "user", "content": context_msg})
+                        save_history(history)
+                        print("[INFO] File added to context. Ask questions about it!\n")
+                continue
+            
+            if user_input.lower().startswith("ls"):
+                parts = user_input.split(maxsplit=1)
+                dirpath = parts[1] if len(parts) > 1 else '.'
+                
+                items, error = list_directory(dirpath)
+                
+                if error:
+                    print(f"\n{error}\n")
+                else:
+                    print(f"\n[INFO] Directory: {dirpath}\n")
+                    for name, item_type, size in items:
+                        if item_type == 'DIR':
+                            print(f"  [DIR]  {name}/")
+                        else:
+                            size_str = f"{size:,} bytes" if size < 1024 else f"{size/1024:.1f} KB"
+                            print(f"  [FILE] {name} ({size_str})")
+                    print()
                 continue
             
             if user_input.lower() == "undo":
