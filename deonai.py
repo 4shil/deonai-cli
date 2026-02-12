@@ -1341,7 +1341,7 @@ def chat_mode(api_key, model):
             
             # Call OpenRouter API
             try:
-                # Check if streaming is supported
+                # Try streaming first
                 use_streaming = True
                 
                 response = requests.post(
@@ -1370,6 +1370,8 @@ def chat_mode(api_key, model):
                 if use_streaming:
                     # Stream the response
                     assistant_text = ""
+                    has_content = False
+                    
                     for line in response.iter_lines():
                         if line:
                             line = line.decode('utf-8')
@@ -1382,29 +1384,53 @@ def chat_mode(api_key, model):
                                     delta = chunk.get("choices", [{}])[0].get("delta", {})
                                     content = delta.get("content", "")
                                     if content:
+                                        has_content = True
                                         print(content, end="", flush=True)
                                         assistant_text += content
                                 except json.JSONDecodeError:
                                     continue
+                    
+                    # If no content was streamed, it might be an error
+                    if not has_content and not assistant_text:
+                        print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} No response received from model")
+                        print(f"{colored('[INFO]', Colors.BLUE)} This model might not support streaming or have issues")
+                        print(f"{Colors.DIM}Try switching to a different model with {colored('/switch', Colors.GREEN)}{Colors.RESET}\n")
+                        history.pop()  # Remove user message
+                        continue
+                    
                     print("\n")
                     
                     # Check for file write commands
                     saved_files = parse_and_save_files(assistant_text)
                     if saved_files:
-                        print(f"[INFO] Created {len(saved_files)} file(s): {', '.join(saved_files)}\n")
+                        print(f"{colored('[INFO]', Colors.BLUE)} Created {len(saved_files)} file(s): {', '.join(saved_files)}\n")
                     
                     usage = {}
                     tokens_used = 0
                 else:
                     result = response.json()
+                    
+                    # Check if we got a valid response
+                    if "choices" not in result or not result["choices"]:
+                        print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Invalid response from API")
+                        print(f"{colored('[INFO]', Colors.BLUE)} Try a different model with {colored('/switch', Colors.GREEN)}\n")
+                        history.pop()
+                        continue
+                    
                     assistant_text = result["choices"][0]["message"]["content"]
+                    
+                    if not assistant_text:
+                        print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Empty response from model")
+                        print(f"{Colors.DIM}Try switching models or rephrasing your question{Colors.RESET}\n")
+                        history.pop()
+                        continue
                     
                     print(assistant_text)
                     
                     # Check for file write commands
                     saved_files = parse_and_save_files(assistant_text)
                     if saved_files:
-                        print(f"\n[INFO] Created {len(saved_files)} file(s): {', '.join(saved_files)}\n")
+                        print(f"\n{colored('[INFO]', Colors.BLUE)} Created {len(saved_files)} file(s): {', '.join(saved_files)}\n")
                     
                     # Track token usage
                     usage = result.get("usage", {})
@@ -1412,18 +1438,25 @@ def chat_mode(api_key, model):
                     total_tokens += tokens_used
                     
                     if tokens_used > 0:
-                        print(f"\n[USAGE] {tokens_used} tokens\n")
+                        print(f"\n{colored('[USAGE]', Colors.DIM)} {tokens_used} tokens\n")
                     else:
                         print()
                 
                 history.append({"role": "assistant", "content": assistant_text})
                 save_history(history)
+                
             except requests.exceptions.Timeout:
-                print("[ERROR] Request timed out. Try again.\n")
+                typing.stop()
+                print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Request timed out. Try again.\n")
                 history.pop()  # Remove user message since it failed
             except requests.exceptions.RequestException as e:
-                print(f"[ERROR] API Error: {e}\n")
+                typing.stop()
+                print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} API Error: {e}\n")
                 history.pop()  # Remove user message since it failed
+            except Exception as e:
+                typing.stop()
+                print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Unexpected error: {e}\n")
+                history.pop()
             
         except KeyboardInterrupt:
             print("\n\nGoodbye!")
