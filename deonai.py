@@ -223,7 +223,43 @@ def chat_mode(api_key, model):
                 print("  clear     - Reset conversation history")
                 print("  models    - List all available AI models")
                 print("  help      - Show this help message")
-                print("  status    - Show current configuration\n")
+                print("  status    - Show current configuration")
+                print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower() == "export":
+                if not history:
+                    print("[WARNING] No conversation history to export\n")
+                    continue
+                
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                
+                # Export to markdown
+                export_file = CONFIG_DIR / f"conversation_{timestamp}.md"
+                with open(export_file, "w") as f:
+                    f.write(f"# DeonAi Conversation Export\n")
+                    f.write(f"**Model:** {model}\n")
+                    f.write(f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                    f.write("---\n\n")
+                    
+                    for msg in history:
+                        role = msg["role"].capitalize()
+                        content = msg["content"]
+                        f.write(f"## {role}\n\n{content}\n\n")
+                
+                # Also export as JSON
+                json_file = CONFIG_DIR / f"conversation_{timestamp}.json"
+                with open(json_file, "w") as f:
+                    json.dump({
+                        "model": model,
+                        "timestamp": timestamp,
+                        "messages": history
+                    }, f, indent=2)
+                
+                print(f"[SUCCESS] Conversation exported:")
+                print(f"  Markdown: {export_file}")
+                print(f"  JSON: {json_file}\n")
                 continue
             
             if user_input.lower() == "status":
