@@ -258,10 +258,50 @@ def chat_mode(api_key, model):
                 print("  switch    - Quick switch to another model")
                 print("  search    - Search conversation history")
                 print("  profile   - Manage profiles (save/load/list)")
+                print("  retry     - Retry the last message with a different model")
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
                 continue
+            
+            if user_input.lower() == "retry":
+                if len(history) < 2:
+                    print("[ERROR] No previous message to retry\n")
+                    continue
+                
+                # Remove last assistant response
+                if history[-1]["role"] == "assistant":
+                    history.pop()
+                
+                # Get the last user message
+                if history and history[-1]["role"] == "user":
+                    last_user_msg = history[-1]["content"]
+                    print(f"\n[INFO] Retrying: {last_user_msg[:50]}...")
+                    
+                    # Optionally switch model for retry
+                    retry_choice = input("Switch model for retry? (y/N): ").strip().lower()
+                    if retry_choice == "y":
+                        print("\nQuick models:")
+                        quick_models = [
+                            "anthropic/claude-sonnet-4",
+                            "google/gemini-2.0-flash-exp:free",
+                            "openai/gpt-4o",
+                        ]
+                        for i, m in enumerate(quick_models, 1):
+                            print(f"  {i}. {m}")
+                        
+                        choice = input("Choice (or Enter to keep current): ").strip()
+                        if choice.isdigit() and 1 <= int(choice) <= len(quick_models):
+                            model = quick_models[int(choice) - 1]
+                            print(f"[INFO] Switched to {model}")
+                    
+                    # Re-send the message
+                    print("\nDeonAi: ", end="", flush=True)
+                    user_input = last_user_msg
+                    # Fall through to normal message processing
+                else:
+                    print("[ERROR] Could not find last user message\n")
+                    continue
             
             if user_input.lower().startswith("profile"):
                 parts = user_input.split()
