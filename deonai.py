@@ -350,6 +350,9 @@ def chat_mode(api_key, model):
             
             # Call OpenRouter API
             try:
+                # Check if streaming is supported
+                use_streaming = True
+                
                 response = requests.post(
                     f"{OPENROUTER_API_URL}/chat/completions",
                     headers={
@@ -361,25 +364,51 @@ def chat_mode(api_key, model):
                         "model": model,
                         "messages": [
                             {"role": "system", "content": DEONAI_SYSTEM}
-                        ] + history
+                        ] + history,
+                        "stream": use_streaming
                     },
-                    timeout=60
+                    timeout=60,
+                    stream=use_streaming
                 )
                 response.raise_for_status()
                 
-                result = response.json()
-                assistant_text = result["choices"][0]["message"]["content"]
-                
-                # Track token usage
-                usage = result.get("usage", {})
-                tokens_used = usage.get("total_tokens", 0)
-                total_tokens += tokens_used
-                
-                print(assistant_text)
-                if tokens_used > 0:
-                    print(f"\n[USAGE] {tokens_used} tokens\n")
+                if use_streaming:
+                    # Stream the response
+                    assistant_text = ""
+                    for line in response.iter_lines():
+                        if line:
+                            line = line.decode('utf-8')
+                            if line.startswith("data: "):
+                                line = line[6:]
+                                if line.strip() == "[DONE]":
+                                    break
+                                try:
+                                    chunk = json.loads(line)
+                                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+                                    content = delta.get("content", "")
+                                    if content:
+                                        print(content, end="", flush=True)
+                                        assistant_text += content
+                                except json.JSONDecodeError:
+                                    continue
+                    print("\n")
+                    
+                    usage = {}
+                    tokens_used = 0
                 else:
-                    print()
+                    result = response.json()
+                    assistant_text = result["choices"][0]["message"]["content"]
+                    
+                    # Track token usage
+                    usage = result.get("usage", {})
+                    tokens_used = usage.get("total_tokens", 0)
+                    total_tokens += tokens_used
+                    
+                    print(assistant_text)
+                    if tokens_used > 0:
+                        print(f"\n[USAGE] {tokens_used} tokens\n")
+                    else:
+                        print()
                 
                 history.append({"role": "assistant", "content": assistant_text})
                 save_history(history)
