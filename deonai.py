@@ -217,6 +217,22 @@ def chat_mode(api_key, model):
                     print("❌ Could not fetch models\n")
                 continue
             
+            if user_input.lower() == "help":
+                print("\n📚 DeonAi Commands:")
+                print("  exit      - Quit the application")
+                print("  clear     - Reset conversation history")
+                print("  models    - List all available AI models")
+                print("  help      - Show this help message")
+                print("  status    - Show current configuration\n")
+                continue
+            
+            if user_input.lower() == "status":
+                print(f"\n⚙️  Current Configuration:")
+                print(f"  Model: {model}")
+                print(f"  Messages in history: {len(history)}")
+                print(f"  Config: {CONFIG_FILE}\n")
+                continue
+            
             history.append({"role": "user", "content": user_input})
             
             print("\nDeonAi: ", end="", flush=True)
