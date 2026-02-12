@@ -747,20 +747,29 @@ def chat_mode(api_key, model):
                     continue
                 
                 elif command == "models":
-                    print(f"\n{colored('[INFO]', Colors.BLUE)} Fetching available models...")
+                    loader = LoadingAnimation("Fetching models")
+                    loader.start()
                     models = fetch_openrouter_models(api_key)
+                    loader.stop()
+                    
                     if models:
-                        print(f"\n{colored('[INFO]', Colors.BLUE)} Available models ({len(models)} total):\n")
-                        for m in models[:30]:  # Show first 30
+                        print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                        print(f"{colored('Available Models', Colors.CYAN, Colors.BOLD)} {colored(f'({len(models)} total)', Colors.DIM)}")
+                        print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                        
+                        for i, m in enumerate(models[:30], 1):
                             name = m.get('name', m.get('id'))
                             model_id = m.get('id')
-                            print(f"  {colored('-', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
-                            print(f"    {Colors.DIM}{name}{Colors.RESET}")
+                            print(f"  {colored(f'{i:2d}.', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
+                            print(f"      {Colors.DIM}{name}{Colors.RESET}")
+                        
                         if len(models) > 30:
-                            print(f"\n  {Colors.DIM}... and {len(models) - 30} more models{Colors.RESET}")
-                        print(f"\n{colored('[INFO]', Colors.BLUE)} Use {colored('/switch', Colors.GREEN)} to change models\n")
+                            print(f"\n  {Colors.DIM}... and {colored(str(len(models) - 30), Colors.CYAN)} more models{Colors.RESET}")
+                        
+                        print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                        print(f"{Colors.DIM}Use {colored('/switch', Colors.GREEN)} to change models{Colors.RESET}\n")
                     else:
-                        print(f"{colored('[ERROR]', Colors.RED)} Could not fetch models\n")
+                        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Could not fetch models\n")
                     continue
                 
                 elif command == "help":
@@ -884,20 +893,29 @@ def chat_mode(api_key, model):
                 continue
             
             if user_input.lower() == "models":
-                print(f"\n{colored('[INFO]', Colors.BLUE)} Fetching available models...")
+                loader = LoadingAnimation("Fetching models")
+                loader.start()
                 models = fetch_openrouter_models(api_key)
+                loader.stop()
+                
                 if models:
-                    print(f"\n{colored('[INFO]', Colors.BLUE)} Available models ({len(models)} total):\n")
-                    for m in models[:30]:  # Show first 30
+                    print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                    print(f"{colored('Available Models', Colors.CYAN, Colors.BOLD)} {colored(f'({len(models)} total)', Colors.DIM)}")
+                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                    
+                    for i, m in enumerate(models[:30], 1):
                         name = m.get('name', m.get('id'))
                         model_id = m.get('id')
-                        print(f"  {colored('-', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
-                        print(f"    {Colors.DIM}{name}{Colors.RESET}")
+                        print(f"  {colored(f'{i:2d}.', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
+                        print(f"      {Colors.DIM}{name}{Colors.RESET}")
+                    
                     if len(models) > 30:
-                        print(f"\n  {Colors.DIM}... and {len(models) - 30} more models{Colors.RESET}")
-                    print(f"\n{colored('[INFO]', Colors.BLUE)} Use {colored('/switch', Colors.GREEN)} to change models\n")
+                        print(f"\n  {Colors.DIM}... and {colored(str(len(models) - 30), Colors.CYAN)} more models{Colors.RESET}")
+                    
+                    print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                    print(f"{Colors.DIM}Use {colored('/switch', Colors.GREEN)} to change models{Colors.RESET}\n")
                 else:
-                    print(f"{colored('[ERROR]', Colors.RED)} Could not fetch models\n")
+                    print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Could not fetch models\n")
                 continue
             
             if user_input.lower() == "help":
