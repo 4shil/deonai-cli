@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """
-DeonAi CLI - Anthropic Claude Integration
+DeonAi CLI - Your personal AI assistant in the terminal
+Simple, fast, customized for you.
 """
 
 import sys
 import json
 import anthropic
 from pathlib import Path
+
+# DeonAi branding
+DEONAI_BANNER = """
+╔══════════════════════════════════════╗
+║         🌊 DeonAi CLI v1.0          ║
+║  Your Personal Terminal Assistant   ║
+╚══════════════════════════════════════╝
+"""
 
 CONFIG_DIR = Path.home() / ".deonai"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -26,7 +35,8 @@ Core traits:
 
 def setup_config():
     """First-time setup - ask for API key"""
-    print("🌊 DeonAi Setup\n")
+    print(DEONAI_BANNER)
+    print("Welcome! Let's set up DeonAi.\n")
     
     api_key = input("Paste your Claude API key: ").strip()
     
@@ -82,8 +92,8 @@ def load_history():
 
 def chat_mode(client, model):
     """Interactive chat mode"""
-    print("🌊 DeonAi Chat Mode")
-    print("Type 'exit' to quit, 'clear' to reset\n")
+    print(DEONAI_BANNER)
+    print("Chat mode - Type 'exit' to quit, 'clear' to reset conversation\n")
     
     history = load_history()
     if history:
