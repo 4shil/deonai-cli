@@ -66,16 +66,80 @@ def load_config():
         return json.load(f)
 
 
+def save_history(history):
+    """Save conversation history"""
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(history, f)
+
+
+def load_history():
+    """Load conversation history"""
+    if HISTORY_FILE.exists():
+        with open(HISTORY_FILE) as f:
+            return json.load(f)
+    return []
+
+
+def chat_mode(client, model):
+    """Interactive chat mode"""
+    print("🌊 DeonAi Chat Mode")
+    print("Type 'exit' to quit, 'clear' to reset\n")
+    
+    history = load_history()
+    if history:
+        print(f"📝 Loaded {len(history)//2} previous messages\n")
+    
+    while True:
+        try:
+            user_input = input("You: ").strip()
+            
+            if not user_input:
+                continue
+            
+            if user_input.lower() == "exit":
+                print("\n👋 Goodbye!")
+                break
+            
+            if user_input.lower() == "clear":
+                history = []
+                save_history(history)
+                print("🗑️  Conversation cleared\n")
+                continue
+            
+            history.append({"role": "user", "content": user_input})
+            
+            print("\nDeonAi: ", end="", flush=True)
+            
+            response = client.messages.create(
+                model=model,
+                max_tokens=4096,
+                system=DEONAI_SYSTEM,
+                messages=history
+            )
+            
+            assistant_text = response.content[0].text
+            print(assistant_text + "\n")
+            
+            history.append({"role": "assistant", "content": assistant_text})
+            save_history(history)
+            
+        except KeyboardInterrupt:
+            print("\n\n👋 Goodbye!")
+            break
+        except Exception as e:
+            print(f"\n❌ Error: {e}\n")
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--setup":
         setup_config()
     else:
         config = load_config()
+        client = anthropic.Anthropic(api_key=config["api_key"])
         
-        # One-shot mode
+        # One-shot mode or chat mode
         if len(sys.argv) > 1:
             prompt = " ".join(sys.argv[1:])
-            client = anthropic.Anthropic(api_key=config["api_key"])
             
             response = client.messages.create(
                 model=config["model"],
@@ -86,8 +150,8 @@ def main():
             
             print(response.content[0].text)
         else:
-            print("Run 'deonai <question>' to ask something")
-            print("Run 'deonai --setup' to reconfigure")
+            # Interactive chat mode
+            chat_mode(client, config["model"])
 
 
 if __name__ == "__main__":
