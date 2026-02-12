@@ -224,9 +224,47 @@ def chat_mode(api_key, model):
                 print("  exit      - Quit the application")
                 print("  clear     - Reset conversation history")
                 print("  models    - List all available AI models")
+                print("  switch    - Quick switch to another model")
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower() == "switch":
+                print("\n[INFO] Quick model switch")
+                print("Popular models:")
+                quick_models = [
+                    "anthropic/claude-sonnet-4",
+                    "anthropic/claude-opus-4",
+                    "google/gemini-2.0-flash-exp:free",
+                    "openai/gpt-4o",
+                    "meta-llama/llama-3.3-70b-instruct"
+                ]
+                for i, m in enumerate(quick_models, 1):
+                    print(f"  {i}. {m}")
+                print("  0. Enter custom model ID")
+                
+                choice = input("\nChoice: ").strip()
+                try:
+                    idx = int(choice)
+                    if 1 <= idx <= len(quick_models):
+                        new_model = quick_models[idx - 1]
+                    elif idx == 0:
+                        new_model = input("Enter model ID: ").strip()
+                    else:
+                        print("[ERROR] Invalid choice\n")
+                        continue
+                except ValueError:
+                    new_model = choice
+                
+                # Update config
+                config = load_config()
+                config["model"] = new_model
+                with open(CONFIG_FILE, "w") as f:
+                    json.dump(config, f)
+                
+                model = new_model
+                print(f"[SUCCESS] Switched to: {model}\n")
                 continue
             
             if user_input.lower() == "export":
