@@ -177,7 +177,7 @@ def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
     print(f"Chat mode - Model: {model}")
-    print("Type 'exit' to quit, 'clear' to reset, 'models' to list available models\n")
+    print("Type 'help' for commands\n")
     
     history = load_history()
     if history:
@@ -238,28 +238,35 @@ def chat_mode(api_key, model):
             print("\nDeonAi: ", end="", flush=True)
             
             # Call OpenRouter API
-            response = requests.post(
-                f"{OPENROUTER_API_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "HTTP-Referer": "https://github.com/4shil/deonai-cli",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": DEONAI_SYSTEM}
-                    ] + history
-                },
-                timeout=60
-            )
-            response.raise_for_status()
-            
-            assistant_text = response.json()["choices"][0]["message"]["content"]
-            print(assistant_text + "\n")
-            
-            history.append({"role": "assistant", "content": assistant_text})
-            save_history(history)
+            try:
+                response = requests.post(
+                    f"{OPENROUTER_API_URL}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "HTTP-Referer": "https://github.com/4shil/deonai-cli",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": DEONAI_SYSTEM}
+                        ] + history
+                    },
+                    timeout=60
+                )
+                response.raise_for_status()
+                
+                assistant_text = response.json()["choices"][0]["message"]["content"]
+                print(assistant_text + "\n")
+                
+                history.append({"role": "assistant", "content": assistant_text})
+                save_history(history)
+            except requests.exceptions.Timeout:
+                print("⏱️  Request timed out. Try again.\n")
+                history.pop()  # Remove user message since it failed
+            except requests.exceptions.RequestException as e:
+                print(f"❌ API Error: {e}\n")
+                history.pop()  # Remove user message since it failed
             
         except KeyboardInterrupt:
             print("\n\n👋 Goodbye!")
