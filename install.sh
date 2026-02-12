@@ -11,7 +11,7 @@ fi
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-pip3 install --user anthropic
+pip3 install --user requests
 
 # Copy script to user bin
 INSTALL_DIR="$HOME/.local/bin"
@@ -30,5 +30,8 @@ fi
 
 echo "✅ DeonAi installed!"
 echo ""
-echo "Run 'deonai --setup' to configure your API key"
+echo "Run 'deonai --setup' to configure your OpenRouter API key"
 echo "Then run 'deonai' to start chatting"
+echo ""
+echo "Get your API key at: https://openrouter.ai/keys"
+
