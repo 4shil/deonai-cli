@@ -578,7 +578,7 @@ def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
     print(f"{colored('Chat Mode', Colors.CYAN, Colors.BOLD)} - Model: {colored(model, Colors.MAGENTA)}")
-    print(f"{Colors.DIM}Type 'help' for commands{Colors.RESET}\n")
+    print(f"{Colors.DIM}Type '/help' for commands or just chat naturally{Colors.RESET}\n")
     
     history = load_history()
     total_tokens = 0
@@ -612,6 +612,75 @@ def chat_mode(api_key, model):
             if not user_input:
                 continue
             
+            # Check if this is a slash command
+            if user_input.startswith('/'):
+                command = user_input[1:].lower()
+                
+                if command == "exit":
+                    print(f"\n{colored('Goodbye!', Colors.CYAN, Colors.BOLD)} 👋\n")
+                    break
+                
+                elif command == "clear":
+                    history = []
+                    save_history(history)
+                    print(f"{colored('[INFO]', Colors.BLUE)} Conversation cleared\n")
+                    continue
+                
+                elif command == "models":
+                    print(f"\n{colored('[INFO]', Colors.BLUE)} Fetching available models...")
+                    models = fetch_openrouter_models(api_key)
+                    if models:
+                        print(f"\n{colored('[INFO]', Colors.BLUE)} Available models ({len(models)} total):\n")
+                        for m in models[:30]:  # Show first 30
+                            name = m.get('name', m.get('id'))
+                            model_id = m.get('id')
+                            print(f"  {colored('-', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
+                            print(f"    {Colors.DIM}{name}{Colors.RESET}")
+                        if len(models) > 30:
+                            print(f"\n  {Colors.DIM}... and {len(models) - 30} more models{Colors.RESET}")
+                        print(f"\n{colored('[INFO]', Colors.BLUE)} Use {colored('/switch', Colors.GREEN)} to change models\n")
+                    else:
+                        print(f"{colored('[ERROR]', Colors.RED)} Could not fetch models\n")
+                    continue
+                
+                elif command == "help":
+                    print(f"\n{colored('═' * 60, Colors.CYAN)}")
+                    print(f"{colored('DeonAi Commands', Colors.CYAN, Colors.BOLD)}")
+                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                    
+                    print(f"{colored('Basic:', Colors.YELLOW, Colors.BOLD)}")
+                    print(f"  {colored('/exit', Colors.GREEN)}      - Quit the application")
+                    print(f"  {colored('/clear', Colors.GREEN)}     - Reset conversation history")
+                    print(f"  {colored('/undo', Colors.GREEN)}      - Remove last message pair")
+                    print(f"  {colored('/help', Colors.GREEN)}      - Show this help message")
+                    print(f"  {colored('/status', Colors.GREEN)}    - Show current configuration\n")
+                    
+                    print(f"{colored('AI Control:', Colors.YELLOW, Colors.BOLD)}")
+                    print(f"  {colored('/models', Colors.GREEN)}    - List all available AI models")
+                    print(f"  {colored('/switch', Colors.GREEN)}    - Quick switch to another model")
+                    print(f"  {colored('/retry', Colors.GREEN)}     - Retry last message with different model")
+                    print(f"  {colored('/system', Colors.GREEN)}    - Change system prompt")
+                    print(f'  {colored(\'"""\', Colors.GREEN)}       - Start multiline input (end with """)\n')
+                    
+                    print(f"{colored('File Operations:', Colors.YELLOW, Colors.BOLD)}")
+                    print(f"  {colored('/read', Colors.GREEN)} <file>    - Read file and show content")
+                    print(f"  {colored('/ls', Colors.GREEN)} [dir]       - List directory contents")
+                    print(f"  {colored('/run', Colors.GREEN)} <file>     - Execute a code file")
+                    print(f"  {colored('/init', Colors.GREEN)} <type> <name> - Create new project\n")
+                    
+                    print(f"{colored('Utilities:', Colors.YELLOW, Colors.BOLD)}")
+                    print(f"  {colored('/search', Colors.GREEN)} <query> - Search conversation history")
+                    print(f"  {colored('/profile', Colors.GREEN)}  - Manage profiles (save/load/list)")
+                    print(f"  {colored('/export', Colors.GREEN)}   - Export conversation to file\n")
+                    
+                    print(f"{colored('Note:', Colors.YELLOW)} {Colors.DIM}Commands start with / to distinguish from AI chat{Colors.RESET}")
+                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                    continue
+                
+                # For other commands, strip the slash and process as before
+                user_input = user_input[1:]
+            
+            # Old command handling (without slash) for backward compatibility
             if user_input.lower() == "exit":
                 print(f"\n{colored('Goodbye!', Colors.CYAN, Colors.BOLD)} 👋\n")
                 break
@@ -619,24 +688,24 @@ def chat_mode(api_key, model):
             if user_input.lower() == "clear":
                 history = []
                 save_history(history)
-                print("[INFO] Conversation cleared\n")
+                print(f"{colored('[INFO]', Colors.BLUE)} Conversation cleared\n")
                 continue
             
             if user_input.lower() == "models":
-                print("\n[INFO] Fetching available models...")
+                print(f"\n{colored('[INFO]', Colors.BLUE)} Fetching available models...")
                 models = fetch_openrouter_models(api_key)
                 if models:
-                    print(f"\n[INFO] Available models ({len(models)} total):\n")
+                    print(f"\n{colored('[INFO]', Colors.BLUE)} Available models ({len(models)} total):\n")
                     for m in models[:30]:  # Show first 30
                         name = m.get('name', m.get('id'))
                         model_id = m.get('id')
-                        print(f"  - {model_id}")
-                        print(f"    {name}")
+                        print(f"  {colored('-', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
+                        print(f"    {Colors.DIM}{name}{Colors.RESET}")
                     if len(models) > 30:
-                        print(f"\n  ... and {len(models) - 30} more models")
-                    print("\nTo switch model, run 'deonai --setup' again\n")
+                        print(f"\n  {Colors.DIM}... and {len(models) - 30} more models{Colors.RESET}")
+                    print(f"\n{colored('[INFO]', Colors.BLUE)} Use {colored('/switch', Colors.GREEN)} to change models\n")
                 else:
-                    print("[ERROR] Could not fetch models\n")
+                    print(f"{colored('[ERROR]', Colors.RED)} Could not fetch models\n")
                 continue
             
             if user_input.lower() == "help":
