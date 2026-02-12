@@ -266,45 +266,48 @@ def fetch_openrouter_models(api_key):
 def setup_config():
     """First-time setup - ask for API key"""
     print(DEONAI_BANNER)
-    print("Welcome! Let's set up DeonAi with OpenRouter.\n")
+    print(f"{colored('Welcome to DeonAi Setup!', Colors.CYAN, Colors.BOLD)}\n")
+    print(f"{Colors.DIM}Get your free API key at: {colored('https://openrouter.ai/keys', Colors.BLUE, Colors.UNDERLINE)}{Colors.RESET}\n")
     
-    api_key = input("Paste your OpenRouter API key: ").strip()
+    api_key = input(f"{colored('Paste your OpenRouter API key:', Colors.YELLOW)} ").strip()
     
     if not api_key.startswith("sk-or-"):
-        print("[ERROR] That doesn't look like a valid OpenRouter API key.")
-        print("It should start with 'sk-or-'")
-        print("Get one at: https://openrouter.ai/keys")
+        print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Invalid API key format")
+        print(f"{Colors.DIM}Keys should start with 'sk-or-'{Colors.RESET}")
+        print(f"{Colors.DIM}Get one at: https://openrouter.ai/keys{Colors.RESET}\n")
         sys.exit(1)
     
     # Fetch available models
-    print("\n[INFO] Fetching available models from OpenRouter...")
+    loader = LoadingAnimation("Fetching available models")
+    loader.start()
     models = fetch_openrouter_models(api_key)
+    loader.stop()
     
     if not models:
-        print("[ERROR] Could not fetch models. Please check your API key.")
+        print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Could not fetch models. Check your API key.\n")
         sys.exit(1)
     
-    print(f"[SUCCESS] Found {len(models)} models!\n")
+    print(f"\n{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} Found {colored(str(len(models)), Colors.CYAN)} models!\n")
     
     # Show popular models
-    print("Choose your model:")
+    print(f"{colored('Choose your model:', Colors.CYAN, Colors.BOLD)}\n")
     popular_models = [
-        ("anthropic/claude-sonnet-4", "Claude Sonnet 4 (recommended)"),
-        ("anthropic/claude-opus-4", "Claude Opus 4 (most capable)"),
-        ("google/gemini-2.0-flash-exp:free", "Gemini 2.0 Flash (free)"),
-        ("meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B"),
-        ("openai/gpt-4o", "GPT-4o"),
+        ("anthropic/claude-sonnet-4", "Claude Sonnet 4", "💎 Recommended"),
+        ("anthropic/claude-opus-4", "Claude Opus 4", "🚀 Most capable"),
+        ("google/gemini-2.0-flash-exp:free", "Gemini 2.0 Flash", "✨ FREE"),
+        ("meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B", "🦙 Open source"),
+        ("openai/gpt-4o", "GPT-4o", "🤖 OpenAI"),
     ]
     
-    for i, (model_id, desc) in enumerate(popular_models, 1):
+    for i, (model_id, name, badge) in enumerate(popular_models, 1):
         # Check if model is available
         if any(m.get("id") == model_id for m in models):
-            print(f"{i}. {desc}")
+            print(f"  {colored(str(i), Colors.GREEN)}. {colored(name, Colors.CYAN)} {colored(badge, Colors.DIM)}")
     
-    print(f"{len(popular_models)+1}. List all {len(models)} models")
-    print(f"{len(popular_models)+2}. Enter model ID manually")
+    print(f"\n  {colored(str(len(popular_models)+1), Colors.GREEN)}. List all {len(models)} models")
+    print(f"  {colored(str(len(popular_models)+2), Colors.GREEN)}. Enter model ID manually\n")
     
-    choice = input(f"\nChoice [1]: ").strip() or "1"
+    choice = input(f"{colored('Choice [1]:', Colors.YELLOW)} ").strip() or "1"
     
     try:
         choice_num = int(choice)
