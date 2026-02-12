@@ -29,7 +29,7 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
 MODELS_CACHE_FILE = CONFIG_DIR / "models_cache.json"
 
 # DeonAi personality system prompt
-DEONAI_SYSTEM = """You are DeonAi, a helpful and intelligent CLI assistant.
+DEONAI_SYSTEM = """You are DeonAi, a helpful and intelligent CLI assistant with file operation capabilities.
 
 Core traits:
 - Direct and concise - no fluff
@@ -37,6 +37,26 @@ Core traits:
 - Give code examples when relevant
 - Admit when you don't know something
 - Focus on practical solutions
+
+File operations:
+When the user asks you to create, modify, or write files:
+1. Generate the complete file content
+2. Format it in a code block with the filename
+3. Use this exact format:
+
+WRITE_FILE: filename.ext
+```language
+file content here
+```
+
+Example:
+WRITE_FILE: hello.py
+```python
+print("Hello, World!")
+```
+
+The system will detect this pattern and automatically save the file.
+You can write multiple files in one response.
 """
 
 
@@ -274,6 +294,32 @@ def list_directory(dirpath='.'):
         return items, None
     except Exception as e:
         return None, f"[ERROR] Could not list directory: {e}"
+
+
+def parse_and_save_files(response_text, current_dir='.'):
+    """Parse AI response for WRITE_FILE commands and save them"""
+    import re
+    
+    # Pattern: WRITE_FILE: filename.ext\n```language\ncontent\n```
+    pattern = r'WRITE_FILE:\s*([^\n]+)\n```[^\n]*\n(.*?)```'
+    matches = re.findall(pattern, response_text, re.DOTALL)
+    
+    saved_files = []
+    for filename, content in matches:
+        filename = filename.strip()
+        content = content.strip()
+        
+        # Resolve relative to current directory
+        filepath = Path(current_dir) / filename
+        
+        success, message = write_file(str(filepath), content)
+        if success:
+            saved_files.append(filename)
+            print(f"\n{message}")
+        else:
+            print(f"\n{message}")
+    
+    return saved_files
 
 
 def chat_mode(api_key, model):
@@ -715,18 +761,29 @@ def chat_mode(api_key, model):
                                     continue
                     print("\n")
                     
+                    # Check for file write commands
+                    saved_files = parse_and_save_files(assistant_text)
+                    if saved_files:
+                        print(f"[INFO] Created {len(saved_files)} file(s): {', '.join(saved_files)}\n")
+                    
                     usage = {}
                     tokens_used = 0
                 else:
                     result = response.json()
                     assistant_text = result["choices"][0]["message"]["content"]
                     
+                    print(assistant_text)
+                    
+                    # Check for file write commands
+                    saved_files = parse_and_save_files(assistant_text)
+                    if saved_files:
+                        print(f"\n[INFO] Created {len(saved_files)} file(s): {', '.join(saved_files)}\n")
+                    
                     # Track token usage
                     usage = result.get("usage", {})
                     tokens_used = usage.get("total_tokens", 0)
                     total_tokens += tokens_used
                     
-                    print(assistant_text)
                     if tokens_used > 0:
                         print(f"\n[USAGE] {tokens_used} tokens\n")
                     else:
