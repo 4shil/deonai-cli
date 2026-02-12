@@ -385,6 +385,73 @@ def run_code(filepath, language=None):
         return None, f"[ERROR] Execution failed: {e}"
 
 
+def create_project_structure(project_type, project_name):
+    """Create a basic project structure"""
+    try:
+        base_path = Path(project_name)
+        
+        if base_path.exists():
+            return False, f"[ERROR] Directory already exists: {project_name}"
+        
+        templates = {
+            'python': {
+                'dirs': ['src', 'tests', 'docs'],
+                'files': {
+                    'README.md': f"# {project_name}\n\nA Python project",
+                    'requirements.txt': "# Add dependencies here\n",
+                    '.gitignore': "__pycache__/\n*.pyc\n.env\nvenv/\n",
+                    'src/__init__.py': "",
+                    'src/main.py': 'def main():\n    print("Hello from {project_name}")\n\nif __name__ == "__main__":\n    main()\n',
+                    'tests/__init__.py': "",
+                    'tests/test_main.py': "import unittest\n\nclass TestMain(unittest.TestCase):\n    def test_example(self):\n        self.assertTrue(True)\n"
+                }
+            },
+            'node': {
+                'dirs': ['src', 'tests'],
+                'files': {
+                    'README.md': f"# {project_name}\n\nA Node.js project",
+                    'package.json': '{\n  "name": "' + project_name + '",\n  "version": "1.0.0",\n  "main": "src/index.js"\n}',
+                    '.gitignore': "node_modules/\n.env\n",
+                    'src/index.js': 'console.log("Hello from ' + project_name + '");',
+                    'tests/index.test.js': "// Add tests here\n"
+                }
+            },
+            'web': {
+                'dirs': ['css', 'js', 'images'],
+                'files': {
+                    'index.html': '<!DOCTYPE html>\n<html>\n<head>\n    <title>' + project_name + '</title>\n    <link rel="stylesheet" href="css/style.css">\n</head>\n<body>\n    <h1>' + project_name + '</h1>\n    <script src="js/main.js"></script>\n</body>\n</html>',
+                    'css/style.css': 'body {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 20px;\n}\n',
+                    'js/main.js': 'console.log("' + project_name + ' loaded");',
+                    'README.md': f"# {project_name}\n\nA web project"
+                }
+            }
+        }
+        
+        if project_type not in templates:
+            return False, f"[ERROR] Unknown project type: {project_type}"
+        
+        template = templates[project_type]
+        
+        # Create base directory
+        base_path.mkdir(parents=True)
+        
+        # Create subdirectories
+        for dir_name in template['dirs']:
+            (base_path / dir_name).mkdir(parents=True, exist_ok=True)
+        
+        # Create files
+        for file_path, content in template['files'].items():
+            full_path = base_path / file_path
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(full_path, 'w') as f:
+                f.write(content)
+        
+        return True, f"[SUCCESS] Created {project_type} project: {project_name}"
+        
+    except Exception as e:
+        return False, f"[ERROR] Could not create project: {e}"
+
+
 def chat_mode(api_key, model):
     """Interactive chat mode"""
     print(DEONAI_BANNER)
@@ -465,9 +532,32 @@ def chat_mode(api_key, model):
                 print("  read      - Read file and show content")
                 print("  ls        - List directory contents")
                 print("  run       - Execute a code file")
+                print("  init      - Create a new project (python/node/web)")
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower().startswith("init "):
+                parts = user_input[5:].split()
+                if len(parts) < 2:
+                    print("[ERROR] Usage: init <type> <name>")
+                    print("Types: python, node, web\n")
+                    continue
+                
+                project_type = parts[0]
+                project_name = parts[1]
+                
+                success, message = create_project_structure(project_type, project_name)
+                print(f"\n{message}\n")
+                
+                if success:
+                    items, _ = list_directory(project_name)
+                    if items:
+                        print(f"[INFO] Project structure:")
+                        for name, item_type, size in items:
+                            print(f"  {name}{'/' if item_type == 'DIR' else ''}")
+                        print()
                 continue
             
             if user_input.lower().startswith("run "):
