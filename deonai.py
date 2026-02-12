@@ -7,6 +7,7 @@ Simple, fast, customized for you. Powered by OpenRouter.
 import sys
 import json
 import requests
+import os
 from pathlib import Path
 
 # DeonAi branding
@@ -202,6 +203,77 @@ def load_profile(name):
     """Load a specific profile"""
     profiles = list_profiles()
     return profiles.get(name)
+
+
+def read_file(filepath):
+    """Read file content safely"""
+    try:
+        path = Path(filepath).expanduser()
+        
+        # Security check - prevent reading sensitive files
+        forbidden = ['/etc/passwd', '/etc/shadow', '.env', '.ssh/id_rsa']
+        if any(str(path).endswith(f) for f in forbidden):
+            return None, "[ERROR] Cannot read sensitive system files"
+        
+        if not path.exists():
+            return None, f"[ERROR] File not found: {filepath}"
+        
+        if not path.is_file():
+            return None, f"[ERROR] Not a file: {filepath}"
+        
+        # Check file size (max 1MB)
+        if path.stat().st_size > 1_000_000:
+            return None, f"[ERROR] File too large (max 1MB): {filepath}"
+        
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        
+        return content, None
+    except Exception as e:
+        return None, f"[ERROR] Could not read file: {e}"
+
+
+def write_file(filepath, content, mode='w'):
+    """Write content to file safely"""
+    try:
+        path = Path(filepath).expanduser()
+        
+        # Create parent directories if needed
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Security check - prevent overwriting system files
+        forbidden_dirs = ['/etc', '/sys', '/proc', '/dev']
+        if any(str(path).startswith(d) for d in forbidden_dirs):
+            return False, "[ERROR] Cannot write to system directories"
+        
+        with open(path, mode, encoding='utf-8') as f:
+            f.write(content)
+        
+        return True, f"[SUCCESS] Written to: {filepath}"
+    except Exception as e:
+        return False, f"[ERROR] Could not write file: {e}"
+
+
+def list_directory(dirpath='.'):
+    """List directory contents"""
+    try:
+        path = Path(dirpath).expanduser()
+        
+        if not path.exists():
+            return None, f"[ERROR] Directory not found: {dirpath}"
+        
+        if not path.is_dir():
+            return None, f"[ERROR] Not a directory: {dirpath}"
+        
+        items = []
+        for item in sorted(path.iterdir()):
+            item_type = 'DIR' if item.is_dir() else 'FILE'
+            size = item.stat().st_size if item.is_file() else 0
+            items.append((item.name, item_type, size))
+        
+        return items, None
+    except Exception as e:
+        return None, f"[ERROR] Could not list directory: {e}"
 
 
 def chat_mode(api_key, model):
