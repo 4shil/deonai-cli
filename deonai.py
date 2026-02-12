@@ -37,6 +37,36 @@ Core traits:
 """
 
 
+def fetch_openrouter_models(api_key):
+    """Fetch all available models from OpenRouter"""
+    try:
+        response = requests.get(
+            f"{OPENROUTER_API_URL}/models",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "HTTP-Referer": "https://github.com/4shil/deonai-cli",
+            },
+            timeout=10
+        )
+        response.raise_for_status()
+        
+        models = response.json().get("data", [])
+        
+        # Cache the models
+        CONFIG_DIR.mkdir(exist_ok=True)
+        with open(MODELS_CACHE_FILE, "w") as f:
+            json.dump(models, f)
+        
+        return models
+    except Exception as e:
+        print(f"⚠️  Could not fetch models: {e}")
+        # Try to load from cache
+        if MODELS_CACHE_FILE.exists():
+            with open(MODELS_CACHE_FILE) as f:
+                return json.load(f)
+        return []
+
+
 def setup_config():
     """First-time setup - ask for API key"""
     print(DEONAI_BANNER)
