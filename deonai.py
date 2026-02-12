@@ -225,9 +225,43 @@ def chat_mode(api_key, model):
                 print("  clear     - Reset conversation history")
                 print("  models    - List all available AI models")
                 print("  switch    - Quick switch to another model")
+                print("  search    - Search conversation history")
                 print("  help      - Show this help message")
                 print("  status    - Show current configuration")
                 print("  export    - Export conversation to file\n")
+                continue
+            
+            if user_input.lower().startswith("search"):
+                parts = user_input.split(maxsplit=1)
+                if len(parts) < 2:
+                    query = input("Enter search query: ").strip()
+                else:
+                    query = parts[1]
+                
+                if not query:
+                    print("[ERROR] No search query provided\n")
+                    continue
+                
+                query_lower = query.lower()
+                matches = []
+                
+                for i, msg in enumerate(history):
+                    if query_lower in msg["content"].lower():
+                        matches.append((i, msg))
+                
+                if matches:
+                    print(f"\n[SEARCH] Found {len(matches)} matches for '{query}':\n")
+                    for idx, msg in matches[:10]:  # Show first 10
+                        role = msg["role"].capitalize()
+                        content = msg["content"][:100]  # First 100 chars
+                        if len(msg["content"]) > 100:
+                            content += "..."
+                        print(f"  [{idx}] {role}: {content}")
+                    if len(matches) > 10:
+                        print(f"\n  ... and {len(matches) - 10} more matches")
+                    print()
+                else:
+                    print(f"[INFO] No matches found for '{query}'\n")
                 continue
             
             if user_input.lower() == "switch":
