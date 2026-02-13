@@ -38,6 +38,7 @@ from .agent import AgenticExecutor, ToolCallFormatter, executor, formatter
 
 # Import to register built-in tools
 from . import builtin_tools
+from . import git_tools
 
 __all__ = [
     # Config
