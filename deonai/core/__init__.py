@@ -34,6 +34,11 @@ from .context import ContextManager
 
 from .tools import Tool, ToolRegistry, ToolCall, registry
 
+from .agent import AgenticExecutor, ToolCallFormatter, executor, formatter
+
+# Import to register built-in tools
+from . import builtin_tools
+
 __all__ = [
     # Config
     'CONFIG_DIR',
@@ -67,5 +72,10 @@ __all__ = [
     'Tool',
     'ToolRegistry',
     'ToolCall',
-    'registry'
+    'registry',
+    # Agent
+    'AgenticExecutor',
+    'ToolCallFormatter',
+    'executor',
+    'formatter'
 ]
