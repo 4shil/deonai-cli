@@ -77,7 +77,7 @@ DEONAI_BANNER = f"""
     ║     ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝          ║
     ║                                                               ║
     ║           {Colors.BRIGHT_MAGENTA}✨ Your AI Coding Assistant ✨{Colors.CYAN}                  ║
-    ║                  {Colors.DIM}v3.0-dev • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}             ║
+    ║                  {Colors.DIM}v3.0 • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}                 ║
     ║                                                               ║
     ╚═══════════════════════════════════════════════════════════════╝
 {Colors.RESET}

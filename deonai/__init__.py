@@ -1,11 +1,11 @@
 """
 DeonAi CLI Package
-Version 3.0.0-dev
+Version 3.0.0
 """
 
-__version__ = "3.0.0-dev"
+__version__ = "3.0.0"
 __author__ = "4shil"
-__description__ = "Your AI coding assistant in the terminal"
+__description__ = "Your AI coding assistant in the terminal - Now with project awareness and autonomous capabilities"
 
 from .core import *
 from .utils import *
