@@ -373,9 +373,153 @@ class ContextManager(BaseContext):
         }
         return ext_map.get(file.suffix.lower())
     
-    def build_context(self, query: str, max_tokens: int = 8000) -> str:
-        """Build context string (stub - implemented in Step 8)"""
-        return f"Project: {self.workspace}\nType: {self.project_info['type']}\n"
+    def build_context(
+        self,
+        query: str,
+        current_file: Optional[Path] = None,
+        max_tokens: int = 8000
+    ) -> str:
+        """
+        Build comprehensive context string for AI
+        
+        Args:
+            query: User's question/task
+            current_file: Currently focused file
+            max_tokens: Maximum tokens (rough estimate: 4 chars = 1 token)
+        
+        Returns:
+            Context string with project info, files, imports
+        """
+        context_parts = []
+        token_estimate = 0
+        max_chars = max_tokens * 4  # Rough conversion
+        
+        # 1. Project header
+        header = self._build_header()
+        context_parts.append(header)
+        token_estimate += len(header)
+        
+        # 2. Current file (highest priority)
+        if current_file and current_file.exists():
+            file_ctx, tokens = self._add_file_context(
+                current_file,
+                max_chars - token_estimate,
+                label="Current File"
+            )
+            if file_ctx:
+                context_parts.append(file_ctx)
+                token_estimate += tokens
+                
+                # 3. Imports from current file
+                imports = self.analyze_imports(current_file)
+                for import_file in imports[:3]:  # Limit to 3 imports
+                    if token_estimate >= max_chars * 0.7:  # Reserve space
+                        break
+                    
+                    import_ctx, tokens = self._add_file_context(
+                        import_file,
+                        max_chars - token_estimate,
+                        label="Imported",
+                        truncate=1000
+                    )
+                    if import_ctx:
+                        context_parts.append(import_ctx)
+                        token_estimate += tokens
+        
+        # 4. Relevant files from query
+        if token_estimate < max_chars * 0.8:
+            relevant_files = self.get_relevant_files(query, max_files=5)
+            
+            for file in relevant_files:
+                if token_estimate >= max_chars * 0.9:
+                    break
+                
+                # Skip if already included
+                if current_file and file == current_file:
+                    continue
+                
+                file_ctx, tokens = self._add_file_context(
+                    file,
+                    max_chars - token_estimate,
+                    label="Relevant",
+                    truncate=2000
+                )
+                if file_ctx:
+                    context_parts.append(file_ctx)
+                    token_estimate += tokens
+        
+        # 5. Footer with stats
+        footer = self._build_footer(len(context_parts) - 1, token_estimate)
+        context_parts.append(footer)
+        
+        return "\n\n".join(context_parts)
+    
+    def _build_header(self) -> str:
+        """Build context header with project info"""
+        lines = [
+            "=" * 60,
+            "PROJECT CONTEXT",
+            "=" * 60,
+            f"Root: {self.workspace}",
+            f"Type: {self.project_info['type']}",
+            f"Language: {self.project_info.get('language', 'unknown')}",
+        ]
+        
+        if self.project_info.get('features'):
+            features = ", ".join(self.project_info['features'])
+            lines.append(f"Features: {features}")
+        
+        lines.append("=" * 60)
+        return "\n".join(lines)
+    
+    def _build_footer(self, file_count: int, tokens: int) -> str:
+        """Build context footer with stats"""
+        return f"\n{'='*60}\nContext: {file_count} files, ~{tokens//4} tokens\n{'='*60}"
+    
+    def _add_file_context(
+        self,
+        file: Path,
+        remaining_chars: int,
+        label: str = "File",
+        truncate: Optional[int] = None
+    ) -> tuple[Optional[str], int]:
+        """
+        Add file to context
+        Returns (context_string, char_count) or (None, 0) if can't add
+        """
+        try:
+            if not file.exists() or not file.is_file():
+                return None, 0
+            
+            # Get relative path for display
+            try:
+                rel_path = file.relative_to(self.workspace)
+            except ValueError:
+                rel_path = file
+            
+            content = file.read_text(encoding='utf-8', errors='ignore')
+            
+            # Truncate if needed
+            if truncate and len(content) > truncate:
+                content = content[:truncate] + "\n... (truncated)"
+            
+            # Check if fits in remaining space
+            file_context = f"\n--- {label}: {rel_path} ---\n{content}\n--- End {rel_path} ---"
+            
+            if len(file_context) > remaining_chars:
+                # Try harder truncation
+                available = remaining_chars - 200  # Reserve for header/footer
+                if available > 500:
+                    content = content[:available] + "\n... (truncated for space)"
+                    file_context = f"\n--- {label}: {rel_path} ---\n{content}\n--- End {rel_path} ---"
+                else:
+                    return None, 0  # Not enough space
+            
+            return file_context, len(file_context)
+            
+        except Exception as e:
+            logger.debug(f"Error adding file {file}: {e}")
+            return None, 0
     
     def _analyze_python_imports(self, file: Path, content: str) -> List[Path]:
         """Analyze Python imports"""
