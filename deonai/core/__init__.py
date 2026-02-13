@@ -17,7 +17,21 @@ from .config import (
     save_history
 )
 
+from .base import (
+    BaseContext,
+    BaseTool,
+    BaseIntegration,
+    DeonAiError,
+    ConfigError,
+    ContextError,
+    ToolError,
+    IntegrationError
+)
+
+from .logger import logger, setup_logger
+
 __all__ = [
+    # Config
     'CONFIG_DIR',
     'CONFIG_FILE',
     'HISTORY_FILE',
@@ -29,5 +43,18 @@ __all__ = [
     'load_config',
     'save_config',
     'load_history',
-    'save_history'
+    'save_history',
+    # Base classes
+    'BaseContext',
+    'BaseTool',
+    'BaseIntegration',
+    # Exceptions
+    'DeonAiError',
+    'ConfigError',
+    'ContextError',
+    'ToolError',
+    'IntegrationError',
+    # Logging
+    'logger',
+    'setup_logger'
 ]
