@@ -30,6 +30,10 @@ from .base import (
 
 from .logger import logger, setup_logger
 
+from .context import ContextManager
+
+from .tools import Tool, ToolRegistry, ToolCall, registry
+
 __all__ = [
     # Config
     'CONFIG_DIR',
@@ -56,5 +60,12 @@ __all__ = [
     'IntegrationError',
     # Logging
     'logger',
-    'setup_logger'
+    'setup_logger',
+    # Context
+    'ContextManager',
+    # Tools
+    'Tool',
+    'ToolRegistry',
+    'ToolCall',
+    'registry'
 ]
