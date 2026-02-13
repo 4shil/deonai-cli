@@ -180,9 +180,163 @@ class ContextManager(BaseContext):
         
         return info
     
-    def get_relevant_files(self, query: str) -> List[Path]:
-        """Find files relevant to query (stub - implemented in Step 6)"""
-        return []
+    def get_relevant_files(
+        self,
+        query: str,
+        max_files: int = 10,
+        include_patterns: Optional[List[str]] = None
+    ) -> List[Path]:
+        """
+        Find files relevant to query using intelligent scoring
+        
+        Args:
+            query: Search query
+            max_files: Maximum files to return
+            include_patterns: File patterns to include (e.g. ['*.py'])
+        
+        Returns:
+            List of relevant file paths, sorted by relevance
+        """
+        # Default patterns based on project language
+        if not include_patterns:
+            include_patterns = self._get_default_patterns()
+        
+        # Collect all matching files
+        all_files = []
+        for pattern in include_patterns:
+            all_files.extend(self.workspace.rglob(pattern))
+        
+        # Filter out excluded directories
+        filtered_files = self._filter_excluded(all_files)
+        
+        # Score and sort by relevance
+        scored_files = self._score_files(filtered_files, query)
+        
+        # Return top N
+        return [path for _, path in scored_files[:max_files]]
+    
+    def _get_default_patterns(self) -> List[str]:
+        """Get file patterns based on project language"""
+        language = self.project_info.get("language")
+        
+        patterns_map = {
+            "python": ["*.py"],
+            "javascript": ["*.js", "*.jsx", "*.mjs"],
+            "typescript": ["*.ts", "*.tsx"],
+            "go": ["*.go"],
+            "rust": ["*.rs"],
+            "java": ["*.java"],
+            "ruby": ["*.rb"],
+            "php": ["*.php"],
+            "c": ["*.c", "*.h"],
+            "cpp": ["*.cpp", "*.cc", "*.cxx", "*.hpp", "*.hxx"],
+        }
+        
+        # Get patterns for detected language
+        patterns = patterns_map.get(language, [])
+        
+        # Add common config files
+        patterns.extend(["*.md", "*.txt", "*.json", "*.yaml", "*.yml"])
+        
+        return patterns if patterns else ["*.*"]
+    
+    def _filter_excluded(self, files: List[Path]) -> List[Path]:
+        """Filter out files in excluded directories"""
+        excluded_dirs = {
+            "node_modules",
+            "__pycache__",
+            ".git",
+            ".hg",
+            ".svn",
+            "venv",
+            "env",
+            ".venv",
+            ".env",
+            "build",
+            "dist",
+            "target",
+            ".next",
+            ".nuxt",
+            "vendor",
+            ".idea",
+            ".vscode",
+            "__pypackages__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".tox",
+            "coverage",
+            ".coverage",
+        }
+        
+        filtered = []
+        for file in files:
+            # Check if any part of path is in excluded
+            if not any(excluded in file.parts for excluded in excluded_dirs):
+                filtered.append(file)
+        
+        return filtered
+    
+    def _score_files(self, files: List[Path], query: str) -> List[tuple]:
+        """
+        Score files by relevance to query
+        Returns list of (score, path) tuples sorted by score desc
+        """
+        query_lower = query.lower()
+        query_words = query_lower.split()
+        
+        scored = []
+        
+        for file in files:
+            if not file.is_file():
+                continue
+            
+            score = 0
+            name_lower = file.name.lower()
+            path_str = str(file).lower()
+            
+            # Exact filename match
+            if query_lower == name_lower:
+                score += 100
+            
+            # Filename contains query
+            if query_lower in name_lower:
+                score += 50
+            
+            # Path contains query
+            if query_lower in path_str:
+                score += 20
+            
+            # Word matches in filename
+            for word in query_words:
+                if word in name_lower:
+                    score += 10
+            
+            # Prefer shorter paths (closer to root)
+            relative_path = file.relative_to(self.workspace)
+            depth_penalty = len(relative_path.parts) * 2
+            score -= depth_penalty
+            
+            # Prefer recently modified (if accessible)
+            try:
+                mtime = file.stat().st_mtime
+                # Normalize to 0-10 range (rough heuristic)
+                import time
+                age_days = (time.time() - mtime) / 86400
+                if age_days < 7:
+                    score += 5
+                elif age_days < 30:
+                    score += 2
+            except:
+                pass
+            
+            # Only include files with positive score
+            if score > 0:
+                scored.append((score, file))
+        
+        # Sort by score descending
+        scored.sort(reverse=True, key=lambda x: x[0])
+        
+        return scored
     
     def build_context(self, query: str, max_tokens: int = 8000) -> str:
         """Build context string (stub - implemented in Step 8)"""
