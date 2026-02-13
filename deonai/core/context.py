@@ -338,9 +338,124 @@ class ContextManager(BaseContext):
         
         return scored
     
+    def analyze_imports(self, file: Path) -> List[Path]:
+        """
+        Analyze file imports and find related files
+        Supports Python and JavaScript/TypeScript
+        """
+        if not file.exists() or not file.is_file():
+            return []
+        
+        try:
+            content = file.read_text(encoding='utf-8', errors='ignore')
+            language = self._detect_file_language(file)
+            
+            if language == 'python':
+                return self._analyze_python_imports(file, content)
+            elif language in ['javascript', 'typescript']:
+                return self._analyze_js_imports(file, content)
+            
+            return []
+            
+        except Exception as e:
+            logger.debug(f"Error analyzing imports in {file}: {e}")
+            return []
+    
+    def _detect_file_language(self, file: Path) -> Optional[str]:
+        """Detect language from file extension"""
+        ext_map = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.jsx': 'javascript',
+            '.mjs': 'javascript',
+            '.ts': 'typescript',
+            '.tsx': 'typescript',
+        }
+        return ext_map.get(file.suffix.lower())
+    
     def build_context(self, query: str, max_tokens: int = 8000) -> str:
         """Build context string (stub - implemented in Step 8)"""
         return f"Project: {self.workspace}\nType: {self.project_info['type']}\n"
+    
+    def _analyze_python_imports(self, file: Path, content: str) -> List[Path]:
+        """Analyze Python imports"""
+        import re
+        
+        imports = []
+        
+        # Match: import x, from x import y, from .x import y
+        patterns = [
+            r'^import\s+([a-zA-Z_][a-zA-Z0-9_\.]*)',
+            r'^from\s+([a-zA-Z_\.][a-zA-Z0-9_\.]*)\s+import',
+        ]
+        
+        for line in content.split('\n'):
+            line = line.strip()
+            
+            for pattern in patterns:
+                match = re.match(pattern, line)
+                if match:
+                    module = match.group(1)
+                    
+                    # Convert module.name to path
+                    if module.startswith('.'):
+                        # Relative import
+                        parts = module.lstrip('.').split('.')
+                        import_path = file.parent
+                        for part in parts:
+                            if part:
+                                import_path = import_path / part
+                    else:
+                        # Absolute import (relative to workspace)
+                        parts = module.split('.')
+                        import_path = self.workspace / '/'.join(parts)
+                    
+                    # Try common extensions
+                    for ext in ['.py', '/__init__.py']:
+                        test_path = Path(str(import_path) + ext)
+                        if test_path.exists() and self.is_in_workspace(test_path):
+                            imports.append(test_path)
+                            break
+        
+        return imports
+    
+    def _analyze_js_imports(self, file: Path, content: str) -> List[Path]:
+        """Analyze JavaScript/TypeScript imports"""
+        import re
+        
+        imports = []
+        
+        # Match: import x from 'y', import 'y', require('y')
+        patterns = [
+            r'import\s+.*?from\s+[\'"]([^\'"]+)[\'"]',
+            r'import\s+[\'"]([^\'"]+)[\'"]',
+            r'require\([\'"]([^\'"]+)[\'"]\)',
+        ]
+        
+        for line in content.split('\n'):
+            line = line.strip()
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, line)
+                for module in matches:
+                    # Only process relative imports
+                    if module.startswith('.'):
+                        import_path = file.parent / module
+                        
+                        # Normalize path
+                        try:
+                            import_path = import_path.resolve()
+                        except:
+                            continue
+                        
+                        # Try common extensions
+                        for ext in ['', '.js', '.jsx', '.ts', '.tsx', '/index.js', '/index.ts']:
+                            test_path = Path(str(import_path) + ext)
+                            if test_path.exists() and self.is_in_workspace(test_path):
+                                imports.append(test_path)
+                                break
+        
+        return imports
     
     def is_in_workspace(self, path: Path) -> bool:
         """Check if path is within workspace"""
