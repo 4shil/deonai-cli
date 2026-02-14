@@ -1072,29 +1072,37 @@ def chat_mode(api_key, model):
                     continue
                 
                 elif command == "models":
-                    loader = LoadingAnimation("Fetching models")
+                    loader = LoadingAnimation("Fetching models", style='dots2')
                     loader.start()
                     models = fetch_openrouter_models(api_key)
                     loader.stop()
                     
                     if models:
-                        print(f"\n{colored('═' * 60, Colors.CYAN)}")
-                        print(f"{colored('Available Models', Colors.CYAN, Colors.BOLD)} {colored(f'({len(models)} total)', Colors.DIM)}")
-                        print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                        print()
+                        print_header(f'🤖 Available AI Models ({len(models)} total)')
+                        print()
                         
-                        for i, m in enumerate(models[:30], 1):
-                            name = m.get('name', m.get('id'))
-                            model_id = m.get('id')
-                            print(f"  {colored(f'{i:2d}.', Colors.DIM)} {colored(model_id, Colors.CYAN)}")
-                            print(f"      {Colors.DIM}{name}{Colors.RESET}")
+                        # Create table for top models
+                        table = Table(['#', 'Model ID', 'Name'], style='single')
                         
-                        if len(models) > 30:
-                            print(f"\n  {Colors.DIM}... and {colored(str(len(models) - 30), Colors.CYAN)} more models{Colors.RESET}")
+                        for i, m in enumerate(models[:20], 1):
+                            name = m.get('name', 'Unknown')[:40]  # Truncate long names
+                            model_id = m.get('id', '')[:45]
+                            table.add_row([
+                                colored(str(i), Colors.DIM),
+                                colored(model_id, Colors.CYAN),
+                                name
+                            ])
                         
-                        print(f"\n{colored('═' * 60, Colors.CYAN)}")
-                        print(f"{Colors.DIM}Use {colored('/switch', Colors.GREEN)} to change models{Colors.RESET}\n")
+                        table.render()
+                        
+                        if len(models) > 20:
+                            print(f"\n{colored(StatusIcons.INFO, Colors.BLUE)} {Colors.DIM}Showing 20 of {colored(str(len(models)), Colors.CYAN)} models{Colors.RESET}")
+                        
+                        print(f"\n{colored('💡 Tip:', Colors.YELLOW)} Use {colored('/switch', Colors.GREEN)} to change models\n")
                     else:
-                        print(f"{colored('[ERROR]', Colors.RED, Colors.BOLD)} Could not fetch models\n")
+                        print_status("Could not fetch models", 'error')
+                        print()
                     continue
                 
                 elif command == "help":
