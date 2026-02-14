@@ -1069,38 +1069,49 @@ def chat_mode(api_key, model):
                     continue
                 
                 elif command == "help":
-                    print(f"\n{colored('═' * 60, Colors.CYAN)}")
-                    print(f"{colored('DeonAi Commands', Colors.CYAN, Colors.BOLD)}")
-                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                    width = get_terminal_width()
+                    divider = '═' * min(70, width - 4)
                     
-                    print(f"{colored('Basic:', Colors.YELLOW, Colors.BOLD)}")
-                    print(f"  {colored('/exit', Colors.GREEN)}      - Quit the application")
-                    print(f"  {colored('/clear', Colors.GREEN)}     - Reset conversation history")
-                    print(f"  {colored('/undo', Colors.GREEN)}      - Remove last message pair")
-                    print(f"  {colored('/help', Colors.GREEN)}      - Show this help message")
-                    print(f"  {colored('/status', Colors.GREEN)}    - Show current configuration\n")
+                    print(f"\n{colored(divider, Colors.CYAN)}")
+                    print(center_text(colored('🤖 DeonAi Commands', Colors.CYAN, Colors.BOLD)))
+                    print(f"{colored(divider, Colors.CYAN)}\n")
                     
-                    print(f"{colored('AI Control:', Colors.YELLOW, Colors.BOLD)}")
-                    print(f"  {colored('/models', Colors.GREEN)}    - List all available AI models")
-                    print(f"  {colored('/switch', Colors.GREEN)}    - Quick switch to another model")
-                    print(f"  {colored('/retry', Colors.GREEN)}     - Retry last message with different model")
-                    print(f"  {colored('/system', Colors.GREEN)}    - Change system prompt")
-                    triple_quotes = '"""'
-                    print(f'  {colored(triple_quotes, Colors.GREEN)}       - Start multiline input (end with {triple_quotes})\n')
+                    # Create help table
+                    sections = [
+                        ('💬 Basic Commands', [
+                            ('/exit', 'Quit the application'),
+                            ('/clear', 'Reset conversation history'),
+                            ('/undo', 'Remove last message pair'),
+                            ('/status', 'Show current configuration'),
+                        ]),
+                        ('🤖 AI Control', [
+                            ('/models', 'List all available AI models'),
+                            ('/switch', 'Quick switch to another model'),
+                            ('/retry', 'Retry last message with different model'),
+                            ('/system', 'Change system prompt'),
+                            ('"""', 'Start multiline input (end with """)'),
+                        ]),
+                        ('📁 File Operations', [
+                            ('/read <file>', 'Read file and show content'),
+                            ('/ls [dir]', 'List directory contents'),
+                            ('/run <file>', 'Execute a code file'),
+                            ('/init <type> <name>', 'Create new project'),
+                        ]),
+                        ('🔧 Utilities', [
+                            ('/search <query>', 'Search conversation history'),
+                            ('/profile', 'Manage profiles (save/load/list)'),
+                            ('/export', 'Export conversation to file'),
+                        ]),
+                    ]
                     
-                    print(f"{colored('File Operations:', Colors.YELLOW, Colors.BOLD)}")
-                    print(f"  {colored('/read', Colors.GREEN)} <file>    - Read file and show content")
-                    print(f"  {colored('/ls', Colors.GREEN)} [dir]       - List directory contents")
-                    print(f"  {colored('/run', Colors.GREEN)} <file>     - Execute a code file")
-                    print(f"  {colored('/init', Colors.GREEN)} <type> <name> - Create new project\n")
+                    for section_title, commands in sections:
+                        print(f"{colored(section_title, Colors.YELLOW, Colors.BOLD)}")
+                        for cmd, desc in commands:
+                            print(f"  {colored(cmd, Colors.GREEN, Colors.BOLD):25} {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} {desc}")
+                        print()
                     
-                    print(f"{colored('Utilities:', Colors.YELLOW, Colors.BOLD)}")
-                    print(f"  {colored('/search', Colors.GREEN)} <query> - Search conversation history")
-                    print(f"  {colored('/profile', Colors.GREEN)}  - Manage profiles (save/load/list)")
-                    print(f"  {colored('/export', Colors.GREEN)}   - Export conversation to file\n")
-                    
-                    print(f"{colored('Note:', Colors.YELLOW)} {Colors.DIM}Commands start with / to distinguish from AI chat{Colors.RESET}")
-                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
+                    print(f"{colored('💡 Tip:', Colors.YELLOW)} Commands start with {colored('/', Colors.GREEN)} to distinguish from AI chat")
+                    print(f"{colored(divider, Colors.CYAN)}\n")
                     continue
                 
                 elif command == "switch":
