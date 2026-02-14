@@ -654,18 +654,23 @@ def setup_config():
 def load_config():
     """Load existing config"""
     if not CONFIG_FILE.exists():
-        print(f"{colored('[ERROR]', Colors.RED)} Run 'deonai --setup' first")
+        print()
+        print_status("Configuration not found", 'error')
+        print(f"\n  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} Run {colored('deonai --setup', Colors.GREEN, Colors.BOLD)} to configure\n")
         sys.exit(1)
     
     try:
         with open(CONFIG_FILE) as f:
             return json.load(f)
     except json.JSONDecodeError:
-        print(f"{colored('[ERROR]', Colors.RED)} Config file is corrupted")
-        print(f"{Colors.DIM}Run 'deonai --setup' to fix{Colors.RESET}")
+        print()
+        print_status("Config file is corrupted", 'error')
+        print(f"\n  {colored(StatusIcons.WRENCH, Colors.YELLOW)} Run {colored('deonai --setup', Colors.GREEN, Colors.BOLD)} to fix\n")
         sys.exit(1)
     except Exception as e:
-        print(f"{colored('[ERROR]', Colors.RED)} Could not load config: {e}")
+        print()
+        print_status(f"Could not load config: {e}", 'error')
+        print()
         sys.exit(1)
 
 
@@ -676,7 +681,7 @@ def save_history(history):
         with open(HISTORY_FILE, "w") as f:
             json.dump(history, f)
     except Exception as e:
-        print(f"{colored('[WARNING]', Colors.YELLOW)} Could not save history: {e}")
+        print_status(f"Could not save history: {e}", 'warning')
 
 
 def load_history():
@@ -686,7 +691,7 @@ def load_history():
             with open(HISTORY_FILE) as f:
                 return json.load(f)
         except json.JSONDecodeError:
-            print(f"{colored('[WARNING]', Colors.YELLOW)} History file corrupted, starting fresh")
+            print_status("History file corrupted, starting fresh", 'warning')
             return []
         except Exception:
             return []
