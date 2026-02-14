@@ -1390,15 +1390,42 @@ def chat_mode(api_key, model):
                 items, error = list_directory(dirpath)
                 
                 if error:
-                    print(f"\n{error}\n")
+                    print_status(error.replace('[ERROR] ', ''), 'error')
+                    print()
                 else:
-                    print(f"\n[INFO] Directory: {dirpath}\n")
-                    for name, item_type, size in items:
-                        if item_type == 'DIR':
-                            print(f"  [DIR]  {name}/")
-                        else:
-                            size_str = f"{size:,} bytes" if size < 1024 else f"{size/1024:.1f} KB"
-                            print(f"  [FILE] {name} ({size_str})")
+                    print()
+                    print_header(f'📁 Directory: {dirpath}')
+                    print()
+                    
+                    # Separate dirs and files
+                    dirs = [(name, size) for name, item_type, size in items if item_type == 'DIR']
+                    files = [(name, size) for name, item_type, size in items if item_type == 'FILE']
+                    
+                    # Print directories first
+                    if dirs:
+                        print(f"  {colored('Directories:', Colors.YELLOW, Colors.BOLD)}")
+                        for name, _ in dirs:
+                            print(f"  {colored(StatusIcons.FOLDER, Colors.BLUE)} {colored(name + '/', Colors.CYAN)}")
+                        print()
+                    
+                    # Print files
+                    if files:
+                        print(f"  {colored('Files:', Colors.YELLOW, Colors.BOLD)}")
+                        for name, size in files:
+                            if size < 1024:
+                                size_str = f"{size} B"
+                            elif size < 1024 * 1024:
+                                size_str = f"{size/1024:.1f} KB"
+                            else:
+                                size_str = f"{size/(1024*1024):.1f} MB"
+                            
+                            print(f"  {colored(StatusIcons.FILE, Colors.GREEN)} {name:40} {colored(size_str, Colors.DIM)}")
+                        print()
+                    
+                    if not dirs and not files:
+                        print(f"  {colored('(empty directory)', Colors.DIM)}\n")
+                    
+                    print_divider('─', width=60)
                     print()
                 continue
             
