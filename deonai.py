@@ -472,7 +472,7 @@ DEONAI_BANNER = f"""
     ║     ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝          ║
     ║                                                               ║
     ║           {Colors.BRIGHT_MAGENTA}✨ Your AI Coding Assistant ✨{Colors.CYAN}                  ║
-    ║                  {Colors.DIM}v2.8 • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}                 ║
+    ║                  {Colors.DIM}v3.0 • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}                 ║
     ║                                                               ║
     ╚═══════════════════════════════════════════════════════════════╝
 {Colors.RESET}
@@ -1106,13 +1106,20 @@ def chat_mode(api_key, model):
                 command = user_input[1:].lower()
                 
                 if command == "exit":
-                    print(f"\n{colored('Goodbye!', Colors.CYAN, Colors.BOLD)} 👋\n")
+                    print()
+                    print_divider('═', width=50, color=Colors.CYAN)
+                    print(center_text(colored('👋 Thanks for using DeonAi!', Colors.CYAN, Colors.BOLD), width=50))
+                    if total_tokens > 0:
+                        print(center_text(colored(f'Session: {len(history)//2} messages • {total_tokens} tokens', Colors.DIM), width=50))
+                    print_divider('═', width=50, color=Colors.CYAN)
+                    print()
                     break
                 
                 elif command == "clear":
                     history = []
                     save_history(history)
-                    print(f"{colored('[INFO]', Colors.BLUE)} Conversation cleared\n")
+                    print_status("Conversation cleared", 'success')
+                    print()
                     continue
                 
                 elif command == "models":
