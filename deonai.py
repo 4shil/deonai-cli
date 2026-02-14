@@ -237,6 +237,86 @@ def print_status(message, status='info', icon=None):
     print(f"{colored(display_icon, color, style)} {message}")
 
 
+class Table:
+    """ASCII table renderer with borders"""
+    def __init__(self, headers, style='single'):
+        self.headers = headers
+        self.rows = []
+        self.style = style
+    
+    def add_row(self, row):
+        """Add a row to the table"""
+        self.rows.append(row)
+    
+    def render(self):
+        """Render the complete table"""
+        if not self.headers:
+            return
+        
+        # Calculate column widths
+        col_widths = [len(str(h)) for h in self.headers]
+        for row in self.rows:
+            for i, cell in enumerate(row):
+                col_widths[i] = max(col_widths[i], len(str(cell)))
+        
+        # Choose border characters
+        if self.style == 'double':
+            tl, tr, bl, br = '╔', '╗', '╚', '╝'
+            h, v, cross = '═', '║', '╬'
+            t_down, t_up = '╦', '╩'
+        elif self.style == 'heavy':
+            tl, tr, bl, br = '┏', '┓', '┗', '┛'
+            h, v, cross = '━', '┃', '╋'
+            t_down, t_up = '┳', '┻'
+        else:  # single
+            tl, tr, bl, br = '┌', '┐', '└', '┘'
+            h, v, cross = '─', '│', '┼'
+            t_down, t_up = '┬', '┴'
+        
+        # Top border
+        line = tl
+        for i, width in enumerate(col_widths):
+            line += h * (width + 2)
+            if i < len(col_widths) - 1:
+                line += t_down
+        line += tr
+        print(colored(line, Colors.CYAN))
+        
+        # Header row
+        row_str = colored(v, Colors.CYAN)
+        for i, (header, width) in enumerate(zip(self.headers, col_widths)):
+            row_str += f" {colored(str(header).ljust(width), Colors.YELLOW, Colors.BOLD)} "
+            row_str += colored(v, Colors.CYAN)
+        print(row_str)
+        
+        # Separator after header
+        line = colored(v if self.style == 'single' else cross, Colors.CYAN)
+        for i, width in enumerate(col_widths):
+            line += colored(h * (width + 2), Colors.CYAN)
+            if i < len(col_widths) - 1:
+                line += colored(cross, Colors.CYAN)
+            else:
+                line += colored(v if self.style == 'single' else cross, Colors.CYAN)
+        print(line)
+        
+        # Data rows
+        for row in self.rows:
+            row_str = colored(v, Colors.CYAN)
+            for i, (cell, width) in enumerate(zip(row, col_widths)):
+                row_str += f" {str(cell).ljust(width)} "
+                row_str += colored(v, Colors.CYAN)
+            print(row_str)
+        
+        # Bottom border
+        line = bl
+        for i, width in enumerate(col_widths):
+            line += h * (width + 2)
+            if i < len(col_widths) - 1:
+                line += t_up
+        line += br
+        print(colored(line, Colors.CYAN))
+
+
 class ProgressBar:
     """ASCII progress bar with percentage"""
     def __init__(self, total, width=40, char='█', empty_char='░'):
