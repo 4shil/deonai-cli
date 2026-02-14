@@ -115,20 +115,31 @@ def wrap_text(text, width=None, indent=0):
 
 
 class LoadingAnimation:
-    """Animated loading spinner"""
-    def __init__(self, message="Processing"):
+    """Animated loading spinner with multiple styles"""
+    
+    SPINNERS = {
+        'dots': ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
+        'line': ['|', '/', '-', '\\'],
+        'arrow': ['←', '↖', '↑', '↗', '→', '↘', '↓', '↙'],
+        'bounce': ['⠁', '⠂', '⠄', '⡀', '⢀', '⠠', '⠐', '⠈'],
+        'dots2': ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷'],
+        'circle': ['◐', '◓', '◑', '◒'],
+        'square': ['◰', '◳', '◲', '◱'],
+        'toggle': ['⊶', '⊷'],
+    }
+    
+    def __init__(self, message="Processing", style='dots'):
         self.message = message
         self.running = False
         self.thread = None
-        # Cool spinner frames
-        self.frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+        self.frames = self.SPINNERS.get(style, self.SPINNERS['dots'])
         self.current_frame = 0
     
     def _animate(self):
         """Animation loop"""
         while self.running:
             frame = self.frames[self.current_frame % len(self.frames)]
-            sys.stdout.write(f'\r{colored(frame, Colors.CYAN)} {colored(self.message, Colors.DIM)}...')
+            sys.stdout.write(f'\r{colored(frame, Colors.CYAN, Colors.BOLD)} {colored(self.message, Colors.DIM)}...')
             sys.stdout.flush()
             self.current_frame += 1
             time.sleep(0.08)
@@ -143,7 +154,7 @@ class LoadingAnimation:
         """Stop the animation"""
         self.running = False
         if self.thread:
-            self.thread.join(timeout=1.0)  # Add timeout to prevent hanging
+            self.thread.join(timeout=1.0)
         sys.stdout.write('\r' + ' ' * (len(self.message) + 20) + '\r')
         sys.stdout.flush()
 
