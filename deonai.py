@@ -546,6 +546,7 @@ HISTORY_FILE = CONFIG_DIR / "history.json"
 PROFILES_FILE = CONFIG_DIR / "profiles.json"
 SYSTEM_PROMPT_FILE = CONFIG_DIR / "system_prompt.txt"
 READLINE_HISTORY_FILE = CONFIG_DIR / ".deonai_readline_history"
+STATS_FILE = CONFIG_DIR / "stats.json"
 
 # OpenRouter API settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
@@ -616,6 +617,57 @@ def reset_system_prompt():
         return True
     except Exception:
         return False
+
+
+def load_stats():
+    """Load usage statistics"""
+    if STATS_FILE.exists():
+        try:
+            with open(STATS_FILE) as f:
+                return json.load(f)
+        except:
+            pass
+    return {
+        "total_messages": 0,
+        "total_tokens": 0,
+        "sessions": 0,
+        "models_used": {},
+        "files_created": 0,
+        "commands_run": 0,
+        "first_use": None,
+        "last_use": None
+    }
+
+
+def save_stats(stats):
+    """Save usage statistics"""
+    try:
+        CONFIG_DIR.mkdir(exist_ok=True)
+        with open(STATS_FILE, 'w') as f:
+            json.dump(stats, f, indent=2)
+    except:
+        pass
+
+
+def update_stats(stats, **kwargs):
+    """Update statistics with new data"""
+    import datetime
+    
+    now = datetime.datetime.now().isoformat()
+    
+    if not stats.get('first_use'):
+        stats['first_use'] = now
+    stats['last_use'] = now
+    
+    for key, value in kwargs.items():
+        if key in ['total_messages', 'total_tokens', 'sessions', 'files_created', 'commands_run']:
+            stats[key] = stats.get(key, 0) + value
+        elif key == 'model':
+            models = stats.get('models_used', {})
+            models[value] = models.get(value, 0) + 1
+            stats['models_used'] = models
+    
+    return stats
 
 
 def fetch_openrouter_models(api_key):
@@ -1122,6 +1174,11 @@ def chat_mode(api_key, model):
     # Set history length
     readline.set_history_length(1000)
     
+    # Load stats and increment session count
+    stats = load_stats()
+    stats = update_stats(stats, sessions=1, model=model)
+    save_stats(stats)
+    
     history = load_history()
     total_tokens = 0
     multiline_mode = False
@@ -1251,6 +1308,7 @@ def chat_mode(api_key, model):
                             ('/search <query>', 'Search conversation history'),
                             ('/profile', 'Manage profiles (save/load/list)'),
                             ('/export', 'Export conversation to file'),
+                            ('/stats', 'View usage statistics'),
                         ]),
                     ]
                     
@@ -1340,6 +1398,58 @@ def chat_mode(api_key, model):
                     
                     for label, value in config_data:
                         print(f"  {label:20} {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} {value}")
+                    
+                    print()
+                    print_divider('─', width=60)
+                    print()
+                    continue
+                
+                elif command == "stats":
+                    import datetime
+                    stats = load_stats()
+                    
+                    print()
+                    print_header('📈 Usage Statistics')
+                    print()
+                    
+                    # Create stats table
+                    table = Table(['Metric', 'Value'], style='single')
+                    table.add_row([
+                        colored('Total Messages', Colors.CYAN),
+                        colored(str(stats.get('total_messages', 0)), Colors.YELLOW, Colors.BOLD)
+                    ])
+                    table.add_row([
+                        colored('Total Tokens', Colors.CYAN),
+                        colored(f"{stats.get('total_tokens', 0):,}", Colors.YELLOW, Colors.BOLD)
+                    ])
+                    table.add_row([
+                        colored('Sessions', Colors.CYAN),
+                        colored(str(stats.get('sessions', 0)), Colors.YELLOW, Colors.BOLD)
+                    ])
+                    table.add_row([
+                        colored('Files Created', Colors.CYAN),
+                        colored(str(stats.get('files_created', 0)), Colors.GREEN, Colors.BOLD)
+                    ])
+                    
+                    if stats.get('first_use'):
+                        try:
+                            first = datetime.datetime.fromisoformat(stats['first_use'])
+                            table.add_row([
+                                colored('First Use', Colors.CYAN),
+                                colored(first.strftime('%Y-%m-%d'), Colors.DIM)
+                            ])
+                        except:
+                            pass
+                    
+                    table.render()
+                    
+                    # Show top models
+                    models_used = stats.get('models_used', {})
+                    if models_used:
+                        print(f"\n{colored('Top Models:', Colors.YELLOW, Colors.BOLD)}")
+                        sorted_models = sorted(models_used.items(), key=lambda x: x[1], reverse=True)[:5]
+                        for model_name, count in sorted_models:
+                            print(f"  {colored(StatusIcons.ROBOT, Colors.MAGENTA)} {model_name}: {colored(str(count), Colors.CYAN)} uses")
                     
                     print()
                     print_divider('─', width=60)
@@ -1951,6 +2061,13 @@ def chat_mode(api_key, model):
                 
                 history.append({"role": "assistant", "content": assistant_text})
                 save_history(history)
+                
+                # Update statistics
+                stats = load_stats()
+                stats = update_stats(stats, total_messages=2, total_tokens=tokens_used, model=model)
+                if saved_files:
+                    stats = update_stats(stats, files_created=len(saved_files))
+                save_stats(stats)
                 
             except requests.exceptions.Timeout:
                 typing.stop()
