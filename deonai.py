@@ -190,6 +190,53 @@ class TypingAnimation:
         sys.stdout.flush()
 
 
+class StatusIcons:
+    """Unicode icons for status indicators"""
+    SUCCESS = '✓'
+    ERROR = '✗'
+    WARNING = '⚠'
+    INFO = 'ℹ'
+    ROCKET = '🚀'
+    SPARKLES = '✨'
+    FIRE = '🔥'
+    LIGHTNING = '⚡'
+    HOURGLASS = '⏳'
+    CHECK = '✔'
+    CROSS = '✘'
+    BULLET = '•'
+    ARROW_RIGHT = '→'
+    ARROW_LEFT = '←'
+    STAR = '★'
+    HEART = '♥'
+    FOLDER = '📁'
+    FILE = '📄'
+    GEAR = '⚙'
+    WRENCH = '🔧'
+    LOCK = '🔒'
+    UNLOCK = '🔓'
+    KEY = '🔑'
+    ROBOT = '🤖'
+    BRAIN = '🧠'
+    EYE = '👁'
+    PENCIL = '✏'
+    TRASH = '🗑'
+
+
+def print_status(message, status='info', icon=None):
+    """Print a formatted status message"""
+    status_config = {
+        'success': (Colors.GREEN, Colors.BOLD, StatusIcons.SUCCESS),
+        'error': (Colors.RED, Colors.BOLD, StatusIcons.ERROR),
+        'warning': (Colors.YELLOW, Colors.BOLD, StatusIcons.WARNING),
+        'info': (Colors.BLUE, Colors.BOLD, StatusIcons.INFO),
+    }
+    
+    color, style, default_icon = status_config.get(status, (Colors.WHITE, '', StatusIcons.BULLET))
+    display_icon = icon or default_icon
+    
+    print(f"{colored(display_icon, color, style)} {message}")
+
+
 class ProgressBar:
     """ASCII progress bar with percentage"""
     def __init__(self, total, width=40, char='█', empty_char='░'):
