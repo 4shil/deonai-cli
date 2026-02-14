@@ -12,6 +12,7 @@ import re
 import threading
 import time
 import shutil
+import readline
 from pathlib import Path
 
 try:
@@ -544,6 +545,7 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 HISTORY_FILE = CONFIG_DIR / "history.json"
 PROFILES_FILE = CONFIG_DIR / "profiles.json"
 SYSTEM_PROMPT_FILE = CONFIG_DIR / "system_prompt.txt"
+READLINE_HISTORY_FILE = CONFIG_DIR / ".deonai_readline_history"
 
 # OpenRouter API settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
@@ -1109,6 +1111,17 @@ def chat_mode(api_key, model):
     print(f"{colored('Chat Mode', Colors.CYAN, Colors.BOLD)} - Model: {colored(model, Colors.MAGENTA)}")
     print(f"{Colors.DIM}Type '/help' for commands or just chat naturally{Colors.RESET}\n")
     
+    # Setup readline for command history
+    CONFIG_DIR.mkdir(exist_ok=True)
+    if READLINE_HISTORY_FILE.exists():
+        try:
+            readline.read_history_file(READLINE_HISTORY_FILE)
+        except:
+            pass
+    
+    # Set history length
+    readline.set_history_length(1000)
+    
     history = load_history()
     total_tokens = 0
     multiline_mode = False
@@ -1149,6 +1162,12 @@ def chat_mode(api_key, model):
                 command = user_input[1:].lower()
                 
                 if command == "exit":
+                    # Save readline history before exit
+                    try:
+                        readline.write_history_file(READLINE_HISTORY_FILE)
+                    except:
+                        pass
+                    
                     print()
                     print_divider('═', width=50, color=Colors.CYAN)
                     print(center_text(colored('👋 Thanks for using DeonAi!', Colors.CYAN, Colors.BOLD), width=50))
