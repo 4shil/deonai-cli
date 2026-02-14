@@ -11,6 +11,7 @@ import os
 import re
 import threading
 import time
+import shutil
 from pathlib import Path
 
 # Color codes for beautiful CLI
@@ -70,6 +71,47 @@ if sys.platform == 'win32':
 def colored(text, color='', style=''):
     """Apply color and style to text"""
     return f"{style}{color}{text}{Colors.RESET}"
+
+
+def get_terminal_width():
+    """Get current terminal width, fallback to 80"""
+    try:
+        return shutil.get_terminal_size().columns
+    except:
+        return 80
+
+
+def center_text(text, width=None):
+    """Center text within terminal width"""
+    if width is None:
+        width = get_terminal_width()
+    return text.center(width)
+
+
+def wrap_text(text, width=None, indent=0):
+    """Wrap text to terminal width with optional indent"""
+    if width is None:
+        width = get_terminal_width()
+    
+    words = text.split()
+    lines = []
+    current_line = ' ' * indent
+    
+    for word in words:
+        if len(current_line) + len(word) + 1 <= width:
+            if current_line.strip():
+                current_line += ' ' + word
+            else:
+                current_line = ' ' * indent + word
+        else:
+            if current_line.strip():
+                lines.append(current_line)
+            current_line = ' ' * indent + word
+    
+    if current_line.strip():
+        lines.append(current_line)
+    
+    return '\n'.join(lines)
 
 
 class LoadingAnimation:
