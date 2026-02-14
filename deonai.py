@@ -453,12 +453,29 @@ DEONAI_BANNER = f"""
     ║     ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝          ║
     ║                                                               ║
     ║           {Colors.BRIGHT_MAGENTA}✨ Your AI Coding Assistant ✨{Colors.CYAN}                  ║
-    ║                  {Colors.DIM}v2.7 • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}                 ║
+    ║                  {Colors.DIM}v2.8 • Powered by OpenRouter{Colors.RESET}{Colors.CYAN}                 ║
     ║                                                               ║
     ╚═══════════════════════════════════════════════════════════════╝
 {Colors.RESET}
-    {Colors.DIM}💡 Tip: Use {Colors.GREEN}/help{Colors.DIM} for commands • Start chatting naturally!{Colors.RESET}
 """
+
+# Compact banner for small terminals
+DEONAI_BANNER_COMPACT = f"""
+{colored('╔══════════════════════════════════╗', Colors.CYAN)}
+{colored('║', Colors.CYAN)}  {colored('🤖 DeonAi', Colors.CYAN, Colors.BOLD)} {colored('- AI Assistant', Colors.MAGENTA)}  {colored('║', Colors.CYAN)}
+{colored('╚══════════════════════════════════╝', Colors.CYAN)}
+"""
+
+def show_banner():
+    """Show appropriate banner based on terminal width"""
+    width = get_terminal_width()
+    if width >= 70:
+        print(DEONAI_BANNER)
+        print(f"    {Colors.DIM}💡 Tip: Type {colored('/help', Colors.GREEN)} for commands • Start chatting!{Colors.RESET}\n")
+    else:
+        print(DEONAI_BANNER_COMPACT)
+        print(f"{Colors.DIM}Type {colored('/help', Colors.GREEN)} for commands{Colors.RESET}\n")
+
 
 CONFIG_DIR = Path.home() / ".deonai"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -569,7 +586,7 @@ def fetch_openrouter_models(api_key):
 
 def setup_config():
     """First-time setup - ask for API key"""
-    print(DEONAI_BANNER)
+    show_banner()
     print(f"{colored('Welcome to DeonAi Setup!', Colors.CYAN, Colors.BOLD)}\n")
     print(f"{Colors.DIM}Get your free API key at: {colored('https://openrouter.ai/keys', Colors.BLUE, Colors.UNDERLINE)}{Colors.RESET}\n")
     
@@ -1026,7 +1043,7 @@ def update_from_github():
 
 def chat_mode(api_key, model):
     """Interactive chat mode"""
-    print(DEONAI_BANNER)
+    show_banner()
     print(f"{colored('Chat Mode', Colors.CYAN, Colors.BOLD)} - Model: {colored(model, Colors.MAGENTA)}")
     print(f"{Colors.DIM}Type '/help' for commands or just chat naturally{Colors.RESET}\n")
     
