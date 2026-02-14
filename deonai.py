@@ -114,6 +114,35 @@ def wrap_text(text, width=None, indent=0):
     return '\n'.join(lines)
 
 
+def print_divider(char='═', width=None, color=Colors.CYAN):
+    """Print a decorative divider line"""
+    if width is None:
+        width = get_terminal_width()
+    print(colored(char * width, color))
+
+
+def print_header(text, char='═', width=None):
+    """Print a centered header with dividers"""
+    if width is None:
+        width = get_terminal_width()
+    print_divider(char, width, Colors.CYAN)
+    print(center_text(colored(text, Colors.CYAN, Colors.BOLD)))
+    print_divider(char, width, Colors.CYAN)
+
+
+def gradient_text(text, start_color=Colors.CYAN, end_color=Colors.MAGENTA):
+    """Apply a simple color transition to text (simulated gradient)"""
+    # For now, just alternate colors - true gradient requires 24-bit color
+    result = ""
+    mid = len(text) // 2
+    for i, char in enumerate(text):
+        if i < mid:
+            result += colored(char, start_color)
+        else:
+            result += colored(char, end_color)
+    return result
+
+
 class LoadingAnimation:
     """Animated loading spinner with multiple styles"""
     
