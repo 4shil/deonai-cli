@@ -137,6 +137,70 @@ class TypingAnimation:
         sys.stdout.flush()
 
 
+# Box drawing utilities
+class BoxChars:
+    """Unicode box-drawing characters for better UI"""
+    # Double line box
+    TOP_LEFT = '╔'
+    TOP_RIGHT = '╗'
+    BOTTOM_LEFT = '╚'
+    BOTTOM_RIGHT = '╝'
+    HORIZONTAL = '═'
+    VERTICAL = '║'
+    
+    # Single line box
+    S_TOP_LEFT = '┌'
+    S_TOP_RIGHT = '┐'
+    S_BOTTOM_LEFT = '└'
+    S_BOTTOM_RIGHT = '┘'
+    S_HORIZONTAL = '─'
+    S_VERTICAL = '│'
+    
+    # Heavy line box
+    H_TOP_LEFT = '┏'
+    H_TOP_RIGHT = '┓'
+    H_BOTTOM_LEFT = '┗'
+    H_BOTTOM_RIGHT = '┛'
+    H_HORIZONTAL = '━'
+    H_VERTICAL = '┃'
+    
+    # Rounded box
+    R_TOP_LEFT = '╭'
+    R_TOP_RIGHT = '╮'
+    R_BOTTOM_LEFT = '╰'
+    R_BOTTOM_RIGHT = '╯'
+
+
+def draw_box(text, width=60, style='double', color=Colors.CYAN):
+    """Draw a box around text with specified style"""
+    if style == 'double':
+        tl, tr, bl, br = BoxChars.TOP_LEFT, BoxChars.TOP_RIGHT, BoxChars.BOTTOM_LEFT, BoxChars.BOTTOM_RIGHT
+        h, v = BoxChars.HORIZONTAL, BoxChars.VERTICAL
+    elif style == 'single':
+        tl, tr, bl, br = BoxChars.S_TOP_LEFT, BoxChars.S_TOP_RIGHT, BoxChars.S_BOTTOM_LEFT, BoxChars.S_BOTTOM_RIGHT
+        h, v = BoxChars.S_HORIZONTAL, BoxChars.S_VERTICAL
+    elif style == 'heavy':
+        tl, tr, bl, br = BoxChars.H_TOP_LEFT, BoxChars.H_TOP_RIGHT, BoxChars.H_BOTTOM_LEFT, BoxChars.H_BOTTOM_RIGHT
+        h, v = BoxChars.H_HORIZONTAL, BoxChars.H_VERTICAL
+    elif style == 'rounded':
+        tl, tr, bl, br = BoxChars.R_TOP_LEFT, BoxChars.R_TOP_RIGHT, BoxChars.R_BOTTOM_LEFT, BoxChars.R_BOTTOM_RIGHT
+        h, v = BoxChars.S_HORIZONTAL, BoxChars.S_VERTICAL
+    else:
+        tl, tr, bl, br = '+', '+', '+', '+'
+        h, v = '-', '|'
+    
+    lines = text.split('\n')
+    result = []
+    result.append(f"{color}{tl}{h * (width - 2)}{tr}{Colors.RESET}")
+    
+    for line in lines:
+        padding = width - len(line) - 4
+        result.append(f"{color}{v}{Colors.RESET} {line}{' ' * padding} {color}{v}{Colors.RESET}")
+    
+    result.append(f"{color}{bl}{h * (width - 2)}{br}{Colors.RESET}")
+    return '\n'.join(result)
+
+
 # DeonAi branding with beautiful ASCII art
 DEONAI_BANNER = f"""
 {Colors.CYAN}{Colors.BOLD}
