@@ -1203,15 +1203,25 @@ def chat_mode(api_key, model):
                     continue
                 
                 elif command == "status":
-                    print(f"\n{colored('═' * 60, Colors.CYAN)}")
-                    print(f"{colored('DeonAi Status', Colors.CYAN, Colors.BOLD)}")
-                    print(f"{colored('═' * 60, Colors.CYAN)}\n")
-                    print(f"{colored('Model:', Colors.YELLOW)} {colored(model, Colors.CYAN)}")
-                    print(f"{colored('Messages:', Colors.YELLOW)} {colored(str(len(history)), Colors.CYAN)}")
-                    print(f"{colored('Tokens used:', Colors.YELLOW)} {colored(str(total_tokens), Colors.CYAN)}")
-                    custom_prompt = SYSTEM_PROMPT_FILE.exists()
-                    print(f"{colored('System prompt:', Colors.YELLOW)} {colored('Custom' if custom_prompt else 'Default', Colors.CYAN)}")
-                    print(f"\n{colored('═' * 60, Colors.CYAN)}\n")
+                    print()
+                    print_header('📊 DeonAi Status Dashboard')
+                    print()
+                    
+                    # Status info with icons
+                    config_data = [
+                        (f"{StatusIcons.ROBOT} Model", colored(model, Colors.CYAN, Colors.BOLD)),
+                        (f"{StatusIcons.BRAIN} Messages", colored(str(len(history)), Colors.MAGENTA)),
+                        (f"{StatusIcons.LIGHTNING} Tokens", colored(str(total_tokens), Colors.YELLOW)),
+                        (f"{StatusIcons.GEAR} System Prompt", colored('Custom' if SYSTEM_PROMPT_FILE.exists() else 'Default', Colors.GREEN)),
+                        (f"{StatusIcons.FOLDER} Config", colored(str(CONFIG_FILE), Colors.DIM)),
+                    ]
+                    
+                    for label, value in config_data:
+                        print(f"  {label:20} {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} {value}")
+                    
+                    print()
+                    print_divider('─', width=60)
+                    print()
                     continue
                 
                 # For file and other commands starting with /, strip slash and continue to old handlers
