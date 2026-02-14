@@ -1071,13 +1071,14 @@ def chat_mode(api_key, model):
     multiline_mode = False
     
     if history:
-        print(f"{colored('[INFO]', Colors.BLUE)} Loaded {colored(str(len(history)//2), Colors.CYAN)} previous messages\n")
+        print_status(f"Loaded {len(history)//2} previous messages", 'info', StatusIcons.BRAIN)
+        print()
     
     while True:
         try:
             # Check for multiline input (triple quotes)
             if multiline_mode:
-                user_input = input(f"{Colors.DIM}... {Colors.RESET}").strip()
+                user_input = input(f"{colored('...', Colors.DIM)} ").strip()
                 if user_input == '"""':
                     multiline_mode = False
                     user_input = multiline_buffer
@@ -1086,13 +1087,15 @@ def chat_mode(api_key, model):
                     multiline_buffer += user_input + "\n"
                     continue
             else:
-                user_input = input(f"{colored('You:', Colors.GREEN, Colors.BOLD)} ").strip()
+                # Styled prompt with icon
+                prompt = f"{colored(StatusIcons.PENCIL, Colors.GREEN)} {colored('You:', Colors.GREEN, Colors.BOLD)} "
+                user_input = input(prompt).strip()
                 
                 # Check if starting multiline mode
                 if user_input == '"""':
                     multiline_mode = True
                     multiline_buffer = ""
-                    print(colored('[INFO]', Colors.BLUE) + ' Multiline mode (type """ to end)')
+                    print_status('Multiline mode (type """ to end)', 'info')
                     continue
             
             if not user_input:
