@@ -1193,28 +1193,37 @@ def chat_mode(api_key, model):
                     continue
                 
                 elif command == "switch":
-                    print(f"\n{colored('Quick Model Switch', Colors.CYAN, Colors.BOLD)}")
-                    print(f"\n{colored('Popular models:', Colors.YELLOW)}")
-                    quick_models = [
-                        "anthropic/claude-sonnet-4",
-                        "anthropic/claude-opus-4",
-                        "google/gemini-2.0-flash-exp:free",
-                        "openai/gpt-4o",
-                        "meta-llama/llama-3.3-70b-instruct"
-                    ]
-                    for i, m in enumerate(quick_models, 1):
-                        print(f"  {colored(str(i), Colors.GREEN)}. {colored(m, Colors.CYAN)}")
-                    print(f"  {colored('0', Colors.GREEN)}. Enter custom model ID\n")
+                    print()
+                    print_header('🔄 Switch AI Model')
+                    print()
                     
-                    choice = input(f"{colored('Choice:', Colors.YELLOW)} ").strip()
+                    print(f"{colored('Popular Models:', Colors.YELLOW, Colors.BOLD)}\n")
+                    
+                    quick_models = [
+                        ("anthropic/claude-sonnet-4", "💎 Balanced • Fast"),
+                        ("anthropic/claude-opus-4", "🚀 Most Capable"),
+                        ("google/gemini-2.0-flash-exp:free", "✨ FREE • Fast"),
+                        ("openai/gpt-4o", "🤖 GPT-4 Latest"),
+                        ("meta-llama/llama-3.3-70b-instruct", "🦙 Open Source")
+                    ]
+                    
+                    for i, (model_id, desc) in enumerate(quick_models, 1):
+                        print(f"  {colored(str(i), Colors.GREEN, Colors.BOLD)}. {colored(model_id, Colors.CYAN):45} {colored(desc, Colors.DIM)}")
+                    
+                    print(f"\n  {colored('0', Colors.GREEN, Colors.BOLD)}. {colored('Enter custom model ID', Colors.CYAN)}\n")
+                    print_divider('─', width=70)
+                    
+                    choice = input(f"\n{colored('Choice:', Colors.YELLOW)} ").strip()
+                    
                     try:
                         idx = int(choice)
                         if 1 <= idx <= len(quick_models):
-                            new_model = quick_models[idx - 1]
+                            new_model = quick_models[idx - 1][0]
                         elif idx == 0:
                             new_model = input(f"{colored('Enter model ID:', Colors.YELLOW)} ").strip()
                         else:
-                            print(f"{colored('[ERROR]', Colors.RED)} Invalid choice\n")
+                            print_status("Invalid choice", 'error')
+                            print()
                             continue
                     except ValueError:
                         new_model = choice
@@ -1226,7 +1235,7 @@ def chat_mode(api_key, model):
                         model = new_model
                         with open(CONFIG_FILE, "w") as f:
                             json.dump(config, f)
-                        print(f"\n{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} Switched to: {colored(model, Colors.CYAN)}\n")
+                        print_completion(f"Switched to {model}", "Ready to use the new model!")
                     continue
                 
                 elif command == "undo":
