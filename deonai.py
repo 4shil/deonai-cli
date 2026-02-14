@@ -266,6 +266,25 @@ def print_status(message, status='info', icon=None):
     print(f"{colored(display_icon, color, style)} {message}")
 
 
+def celebrate(message="Success!"):
+    """Print a celebration message with sparkles"""
+    sparkles = f"{StatusIcons.SPARKLES} {StatusIcons.SPARKLES} {StatusIcons.SPARKLES}"
+    print()
+    print(colored(sparkles, Colors.YELLOW))
+    print(f"  {colored(message, Colors.GREEN, Colors.BOLD)}")
+    print(colored(sparkles, Colors.YELLOW))
+    print()
+
+
+def print_completion(task, details=None):
+    """Print a task completion message"""
+    print()
+    print(f"{colored(StatusIcons.SUCCESS, Colors.GREEN, Colors.BOLD)} {colored(task, Colors.GREEN, Colors.BOLD)}")
+    if details:
+        print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} {colored(details, Colors.DIM)}")
+    print()
+
+
 class Table:
     """ASCII table renderer with borders"""
     def __init__(self, headers, style='single'):
