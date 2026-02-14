@@ -14,6 +14,14 @@ import time
 import shutil
 from pathlib import Path
 
+try:
+    from pygments import highlight
+    from pygments.lexers import get_lexer_by_name, guess_lexer
+    from pygments.formatters import TerminalFormatter
+    PYGMENTS_AVAILABLE = True
+except ImportError:
+    PYGMENTS_AVAILABLE = False
+
 # Color codes for beautiful CLI
 class Colors:
     # Enhanced color palette - Modern theme
@@ -283,6 +291,41 @@ def print_completion(task, details=None):
     if details:
         print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} {colored(details, Colors.DIM)}")
     print()
+
+
+def syntax_highlight(code, language='python'):
+    """Apply syntax highlighting to code if pygments is available"""
+    if not PYGMENTS_AVAILABLE:
+        return code
+    
+    try:
+        if language:
+            lexer = get_lexer_by_name(language, stripall=True)
+        else:
+            lexer = guess_lexer(code)
+        
+        formatter = TerminalFormatter()
+        return highlight(code, lexer, formatter)
+    except:
+        return code
+
+
+def format_ai_response(text):
+    """Format AI response with syntax highlighting for code blocks"""
+    # Pattern to match code blocks: ```language\ncode\n```
+    pattern = r'```(\w+)?\n(.*?)```'
+    
+    def replace_code_block(match):
+        language = match.group(1) or 'python'
+        code = match.group(2)
+        
+        if PYGMENTS_AVAILABLE:
+            highlighted = syntax_highlight(code, language)
+            return f"\n{colored('┌─ Code (' + language + ')', Colors.DIM)}\n{highlighted}{colored('└─', Colors.DIM)}\n"
+        else:
+            return f"\n{colored('┌─ Code (' + language + ')', Colors.CYAN)}\n{code}\n{colored('└─', Colors.CYAN)}\n"
+    
+    return re.sub(pattern, replace_code_block, text, flags=re.DOTALL)
 
 
 class Table:
