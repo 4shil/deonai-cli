@@ -190,6 +190,36 @@ class TypingAnimation:
         sys.stdout.flush()
 
 
+class ProgressBar:
+    """ASCII progress bar with percentage"""
+    def __init__(self, total, width=40, char='█', empty_char='░'):
+        self.total = total
+        self.current = 0
+        self.width = width
+        self.char = char
+        self.empty_char = empty_char
+    
+    def update(self, current):
+        """Update progress"""
+        self.current = min(current, self.total)
+        self.render()
+    
+    def render(self):
+        """Render the progress bar"""
+        percent = (self.current / self.total) * 100 if self.total > 0 else 0
+        filled = int((self.current / self.total) * self.width) if self.total > 0 else 0
+        bar = self.char * filled + self.empty_char * (self.width - filled)
+        
+        sys.stdout.write(f'\r{colored("[", Colors.CYAN)}{colored(bar, Colors.GREEN)}{colored("]", Colors.CYAN)} {colored(f"{percent:.1f}%", Colors.YELLOW)}')
+        sys.stdout.flush()
+    
+    def complete(self):
+        """Mark as complete and move to next line"""
+        self.current = self.total
+        self.render()
+        print()
+
+
 # Box drawing utilities
 class BoxChars:
     """Unicode box-drawing characters for better UI"""
