@@ -1869,9 +1869,10 @@ def chat_mode(api_key, model):
                 print(f"\n{colored('DeonAi:', Colors.MAGENTA, Colors.BOLD)} ", end="", flush=True)
                 
                 if use_streaming:
-                    # Stream the response
+                    # Stream the response with smooth word display
                     assistant_text = ""
                     has_content = False
+                    words_buffer = ""
                     
                     for line in response.iter_lines():
                         if line:
@@ -1886,7 +1887,9 @@ def chat_mode(api_key, model):
                                     content = delta.get("content", "")
                                     if content:
                                         has_content = True
-                                        print(content, end="", flush=True)
+                                        # Smooth streaming with slight delay
+                                        print(colored(content, Colors.WHITE), end="", flush=True)
+                                        time.sleep(0.01)  # Smooth visual effect
                                         assistant_text += content
                                 except json.JSONDecodeError:
                                     continue
