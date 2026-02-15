@@ -800,6 +800,49 @@ def add_to_memory(entry):
         return False
 
 
+def search_memory(query):
+    """Search through memory and notes for a query"""
+    results = []
+    
+    # Search memory file
+    if MEMORY_FILE.exists():
+        with open(MEMORY_FILE, 'r') as f:
+            content = f.read()
+            if query.lower() in content.lower():
+                # Find relevant sections
+                lines = content.split('\n')
+                for i, line in enumerate(lines):
+                    if query.lower() in line.lower():
+                        # Get context around the match
+                        start = max(0, i - 2)
+                        end = min(len(lines), i + 3)
+                        snippet = '\n'.join(lines[start:end])
+                        results.append({
+                            'source': 'memory.md',
+                            'snippet': snippet,
+                            'line': i + 1
+                        })
+    
+    # Search notes
+    if NOTES_DIR.exists():
+        for note_file in NOTES_DIR.glob('*.md'):
+            with open(note_file, 'r') as f:
+                content = f.read()
+                if query.lower() in content.lower():
+                    # Get first 200 chars containing query
+                    idx = content.lower().find(query.lower())
+                    start = max(0, idx - 50)
+                    end = min(len(content), idx + 150)
+                    snippet = content[start:end]
+                    results.append({
+                        'source': note_file.name,
+                        'snippet': '...' + snippet + '...',
+                        'line': None
+                    })
+    
+    return results
+
+
 def load_settings():
     """Load user settings"""
     if SETTINGS_FILE.exists():
@@ -1700,6 +1743,36 @@ def chat_mode(api_key, model):
                     else:
                         print_status("Failed to save to memory", 'error')
                         print()
+                    continue
+                
+                elif command.startswith("recall"):
+                    query = user_input[8:].strip()  # Remove '/recall '
+                    if not query:
+                        print_status("Usage: /recall <query>", 'error')
+                        print()
+                        continue
+                    
+                    results = search_memory(query)
+                    
+                    if not results:
+                        print_status(f"No results found for '{query}'", 'info')
+                        print()
+                        continue
+                    
+                    print()
+                    print_header(f'🔍 Search Results for "{query}" ({len(results)})')
+                    print()
+                    
+                    for i, result in enumerate(results[:10], 1):  # Show top 10
+                        print(f"{colored(f'{i}.', Colors.DIM)} {colored(result['source'], Colors.CYAN, Colors.BOLD)}")
+                        print(f"   {result['snippet'][:200]}")
+                        print()
+                    
+                    if len(results) > 10:
+                        print(f"{colored(StatusIcons.INFO, Colors.BLUE)} Showing 10 of {len(results)} results\n")
+                    
+                    print_divider('─', width=60)
+                    print()
                     continue
                 
                 elif command == "settings":
