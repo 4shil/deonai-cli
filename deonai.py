@@ -1622,6 +1622,7 @@ def chat_mode(api_key, model):
                             ('/sessions', 'List saved sessions'),
                             ('/load <name>', 'Load a saved session'),
                             ('/fork [n]', 'Branch from message N (default: last)'),
+                            ('/context', 'View conversation context summary'),
                         ]),
                     ]
                     
@@ -2010,6 +2011,68 @@ def chat_mode(api_key, model):
                     
                     print_completion("Conversation forked", f"Branched from message {fork_point}")
                     print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} Original saved as: {colored(f'before_fork_{timestamp}', Colors.CYAN)}\n")
+                    continue
+                
+                elif command == "context":
+                    if not history:
+                        print_status("No conversation history", 'info')
+                        print()
+                        continue
+                    
+                    print()
+                    print_header(f'📋 Conversation Context ({len(history)} messages)')
+                    print()
+                    
+                    # Calculate stats
+                    user_msgs = sum(1 for m in history if m['role'] == 'user')
+                    assistant_msgs = sum(1 for m in history if m['role'] == 'assistant')
+                    system_msgs = sum(1 for m in history if m['role'] == 'system')
+                    
+                    total_chars = sum(len(m['content']) for m in history)
+                    estimated_tokens = estimate_tokens(''.join(m['content'] for m in history))
+                    
+                    # Show summary table
+                    table = Table(['Metric', 'Value'], style='single')
+                    table.add_row([
+                        colored('Total Messages', Colors.CYAN),
+                        colored(str(len(history)), Colors.YELLOW, Colors.BOLD)
+                    ])
+                    table.add_row([
+                        colored('User Messages', Colors.CYAN),
+                        colored(str(user_msgs), Colors.GREEN)
+                    ])
+                    table.add_row([
+                        colored('Assistant Messages', Colors.CYAN),
+                        colored(str(assistant_msgs), Colors.MAGENTA)
+                    ])
+                    table.add_row([
+                        colored('System Messages', Colors.CYAN),
+                        colored(str(system_msgs), Colors.DIM)
+                    ])
+                    table.add_row([
+                        colored('Total Characters', Colors.CYAN),
+                        colored(f"{total_chars:,}", Colors.YELLOW)
+                    ])
+                    table.add_row([
+                        colored('Estimated Tokens', Colors.CYAN),
+                        colored(f"{estimated_tokens:,}", Colors.YELLOW, Colors.BOLD)
+                    ])
+                    table.add_row([
+                        colored('Context Limit', Colors.CYAN),
+                        colored(str(settings.get('context_limit', MAX_CONTEXT_MESSAGES)), Colors.DIM)
+                    ])
+                    
+                    table.render()
+                    
+                    # Show recent messages preview
+                    print(f"\n{colored('📝 Recent Messages:', Colors.CYAN, Colors.BOLD)}\n")
+                    recent = history[-5:] if len(history) >= 5 else history
+                    for i, msg in enumerate(recent, start=len(history)-len(recent)+1):
+                        role_color = Colors.GREEN if msg['role'] == 'user' else Colors.MAGENTA
+                        preview = msg['content'][:80] + "..." if len(msg['content']) > 80 else msg['content']
+                        print(f"  {colored(f'#{i}', Colors.DIM)} {colored(msg['role'].title(), role_color)}: {preview}")
+                    
+                    print(f"\n{colored('💡 Tip:', Colors.YELLOW)} Use {colored('/fork <n>', Colors.GREEN)} to branch from a specific message\n")
                     continue
                 
                 # For file and other commands starting with /, strip slash and continue to old handlers
