@@ -573,6 +573,8 @@ PROFILES_FILE = CONFIG_DIR / "profiles.json"
 SYSTEM_PROMPT_FILE = CONFIG_DIR / "system_prompt.txt"
 READLINE_HISTORY_FILE = CONFIG_DIR / ".deonai_readline_history"
 STATS_FILE = CONFIG_DIR / "stats.json"
+MEMORY_FILE = CONFIG_DIR / "memory.md"
+NOTES_DIR = CONFIG_DIR / "notes"
 
 # Memory and context settings
 MAX_CONTEXT_MESSAGES = 50  # Maximum messages to keep in context
@@ -724,6 +726,67 @@ def summarize_context(history):
     user_msgs = sum(1 for msg in history if msg['role'] == 'user')
     assistant_msgs = sum(1 for msg in history if msg['role'] == 'assistant')
     return f"Previous context: {user_msgs} user messages, {assistant_msgs} assistant responses"
+
+
+def save_note(title, content):
+    """Save a note to persistent memory"""
+    try:
+        NOTES_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Sanitize filename
+        safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')
+        note_file = NOTES_DIR / f"{safe_title}.md"
+        
+        with open(note_file, 'w') as f:
+            f.write(f"# {title}\n\n")
+            f.write(f"*Created: {time.strftime('%Y-%m-%d %H:%M')}*\n\n")
+            f.write(content)
+        
+        return True, note_file
+    except Exception as e:
+        return False, str(e)
+
+
+def list_notes():
+    """List all saved notes"""
+    if not NOTES_DIR.exists():
+        return []
+    
+    notes = []
+    for note_file in sorted(NOTES_DIR.glob('*.md')):
+        notes.append({
+            'name': note_file.stem.replace('_', ' '),
+            'file': note_file.name,
+            'modified': time.strftime('%Y-%m-%d', time.localtime(note_file.stat().st_mtime))
+        })
+    return notes
+
+
+def read_note(filename):
+    """Read a note from persistent memory"""
+    try:
+        note_file = NOTES_DIR / filename
+        if not note_file.exists():
+            return None, "Note not found"
+        
+        with open(note_file, 'r') as f:
+            return f.read(), None
+    except Exception as e:
+        return None, str(e)
+
+
+def add_to_memory(entry):
+    """Add an entry to long-term memory file"""
+    try:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        
+        with open(MEMORY_FILE, 'a') as f:
+            f.write(f"\n---\n**{time.strftime('%Y-%m-%d %H:%M')}**\n\n")
+            f.write(f"{entry}\n\n")
+        
+        return True
+    except Exception as e:
+        return False
 
 
 def fetch_openrouter_models(api_key):
