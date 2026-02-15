@@ -1439,6 +1439,12 @@ def chat_mode(api_key, model):
                             ('/export', 'Export conversation to file'),
                             ('/stats', 'View usage statistics'),
                         ]),
+                        ('🧠 Memory & Notes', [
+                            ('/note <title>', 'Save current context as a note'),
+                            ('/notes', 'List all saved notes'),
+                            ('/memory <text>', 'Add entry to long-term memory'),
+                            ('/recall [query]', 'Search memory and notes'),
+                        ]),
                     ]
                     
                     for section_title, commands in sections:
@@ -1583,6 +1589,75 @@ def chat_mode(api_key, model):
                     print()
                     print_divider('─', width=60)
                     print()
+                    continue
+                
+                elif command.startswith("note"):
+                    parts = user_input[6:].strip()  # Remove '/note '
+                    if not parts:
+                        print_status("Usage: /note <title>", 'error')
+                        print()
+                        continue
+                    
+                    # Get last few messages as context
+                    recent = history[-4:] if len(history) >= 4 else history
+                    content = "\n\n".join([
+                        f"**{msg['role'].title()}:** {msg['content'][:500]}"
+                        for msg in recent
+                    ])
+                    
+                    success, result = save_note(parts, content)
+                    if success:
+                        print_completion(f"Note saved: {parts}", f"Saved to {result.name}")
+                    else:
+                        print_status(f"Failed to save note: {result}", 'error')
+                        print()
+                    continue
+                
+                elif command == "notes":
+                    notes = list_notes()
+                    
+                    if not notes:
+                        print_status("No notes saved yet", 'info')
+                        print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} Use {colored('/note <title>', Colors.GREEN)} to save one\n")
+                        continue
+                    
+                    print()
+                    print_header(f'📝 Saved Notes ({len(notes)})')
+                    print()
+                    
+                    table = Table(['Title', 'Modified'], style='single')
+                    for note in notes:
+                        table.add_row([
+                            colored(note['name'], Colors.CYAN),
+                            colored(note['modified'], Colors.DIM)
+                        ])
+                    table.render()
+                    
+                    print(f"\n{colored('💡 Tip:', Colors.YELLOW)} Use {colored('/note <title>', Colors.GREEN)} to save current context\n")
+                    continue
+                
+                elif command.startswith("memory"):
+                    entry = user_input[8:].strip()  # Remove '/memory '
+                    if not entry:
+                        # Show memory file
+                        if MEMORY_FILE.exists():
+                            content, _ = read_note(MEMORY_FILE.name)
+                            print()
+                            print_header('🧠 Long-term Memory')
+                            print()
+                            print(content if content else colored('(empty)', Colors.DIM))
+                            print()
+                        else:
+                            print_status("No memory entries yet", 'info')
+                            print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} Use {colored('/memory <text>', Colors.GREEN)} to add one\n")
+                        continue
+                    
+                    # Add to memory
+                    if add_to_memory(entry):
+                        print_completion("Added to memory", entry[:60] + "..." if len(entry) > 60 else entry)
+                    else:
+                        print_status("Failed to save to memory", 'error')
+                        print()
                     continue
                 
                 # For file and other commands starting with /, strip slash and continue to old handlers
