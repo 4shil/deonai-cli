@@ -48,6 +48,8 @@ detect_os() {
         . /etc/lsb-release
         OS=$DISTRIB_ID
         OS_VERSION=$DISTRIB_RELEASE
+    elif [ -f /etc/arch-release ]; then
+        OS="arch"
     else
         OS=$(uname -s)
     fi
@@ -74,8 +76,11 @@ check_python() {
             fedora|rhel|centos)
                 echo "  sudo dnf install python3 python3-pip"
                 ;;
-            arch)
+            arch|manjaro)
                 echo "  sudo pacman -S python python-pip"
+                ;;
+            opensuse*)
+                echo "  sudo zypper install python3 python3-pip"
                 ;;
             *)
                 echo "  Please install Python 3 for your distribution"
@@ -89,14 +94,45 @@ check_python() {
 install_dependencies() {
     print_info "Installing Python dependencies..."
     
-    # Try pip3 first, then pip
+    # Check if running on Arch-based system
+    if [[ "$OS" == "arch" || "$OS" == "manjaro" ]]; then
+        print_info "Detected Arch-based system"
+        
+        # Check if python-pygments is available
+        if ! pacman -Qi python-pygments &> /dev/null; then
+            print_warning "python-pygments not installed"
+            read -p "Install via pacman? (recommended) (y/N) " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                sudo pacman -S --noconfirm python-pygments python-requests || true
+            fi
+        fi
+    fi
+    
+    # Install via pip (works for all distributions)
     if command -v pip3 &> /dev/null; then
-        pip3 install --user requests colorama 2>&1 | grep -v "already satisfied" || true
+        print_info "Installing via pip3..."
+        pip3 install --user -r requirements.txt 2>&1 | grep -E "(Requirement|Successfully)" || true
     elif command -v pip &> /dev/null; then
-        pip install --user requests colorama 2>&1 | grep -v "already satisfied" || true
+        print_info "Installing via pip..."
+        pip install --user -r requirements.txt 2>&1 | grep -E "(Requirement|Successfully)" || true
     else
         print_error "pip not found. Install it first:"
-        echo "  curl https://bootstrap.pypa.io/get-pip.py | python3"
+        echo ""
+        case $OS in
+            arch|manjaro)
+                echo "  sudo pacman -S python-pip"
+                ;;
+            ubuntu|debian)
+                echo "  sudo apt install python3-pip"
+                ;;
+            fedora|rhel|centos)
+                echo "  sudo dnf install python3-pip"
+                ;;
+            *)
+                echo "  curl https://bootstrap.pypa.io/get-pip.py | python3"
+                ;;
+        esac
         exit 1
     fi
     
