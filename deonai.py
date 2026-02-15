@@ -91,6 +91,18 @@ if sys.platform == 'win32':
     except ImportError:
         Colors.disable()
 
+# Detect terminal capabilities on Linux
+if IS_LINUX:
+    # Check if stdout is a TTY and supports colors
+    if not sys.stdout.isatty():
+        Colors.disable()
+    elif os.environ.get('TERM') == 'dumb':
+        Colors.disable()
+    elif not os.environ.get('TERM'):
+        # No TERM set, probably not a real terminal
+        Colors.disable()
+
+
 def colored(text, color='', style=''):
     """Apply color and style to text"""
     return f"{style}{color}{text}{Colors.RESET}"
@@ -719,6 +731,14 @@ def setup_config():
     show_banner()
     print(f"{colored('Welcome to DeonAi Setup!', Colors.CYAN, Colors.BOLD)}\n")
     print(f"{Colors.DIM}Get your free API key at: {colored('https://openrouter.ai/keys', Colors.BLUE, Colors.UNDERLINE)}{Colors.RESET}\n")
+    
+    # Ensure config directory exists with proper permissions
+    try:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True, mode=0o755)
+    except Exception as e:
+        print(f"\n{colored('[ERROR]', Colors.RED, Colors.BOLD)} Could not create config directory: {e}")
+        print(f"{Colors.DIM}Try: mkdir -p {CONFIG_DIR} && chmod 755 {CONFIG_DIR}{Colors.RESET}\n")
+        sys.exit(1)
     
     api_key = input(f"{colored('Paste your OpenRouter API key:', Colors.YELLOW)} ").strip()
     
