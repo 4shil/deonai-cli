@@ -575,10 +575,21 @@ READLINE_HISTORY_FILE = CONFIG_DIR / ".deonai_readline_history"
 STATS_FILE = CONFIG_DIR / "stats.json"
 MEMORY_FILE = CONFIG_DIR / "memory.md"
 NOTES_DIR = CONFIG_DIR / "notes"
+SETTINGS_FILE = CONFIG_DIR / "settings.json"
 
 # Memory and context settings
 MAX_CONTEXT_MESSAGES = 50  # Maximum messages to keep in context
 CONTEXT_TRIM_TO = 30       # Trim to this many when limit reached
+
+# Default settings
+DEFAULT_SETTINGS = {
+    "temperature": 0.7,
+    "max_tokens": 4096,
+    "streaming": True,
+    "auto_save": True,
+    "context_limit": MAX_CONTEXT_MESSAGES,
+    "theme": "default"
+}
 
 # OpenRouter API settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
@@ -784,6 +795,30 @@ def add_to_memory(entry):
             f.write(f"\n---\n**{time.strftime('%Y-%m-%d %H:%M')}**\n\n")
             f.write(f"{entry}\n\n")
         
+        return True
+    except Exception as e:
+        return False
+
+
+def load_settings():
+    """Load user settings"""
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE) as f:
+                settings = json.load(f)
+                # Merge with defaults
+                return {**DEFAULT_SETTINGS, **settings}
+        except:
+            pass
+    return DEFAULT_SETTINGS.copy()
+
+
+def save_settings(settings):
+    """Save user settings"""
+    try:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        with open(SETTINGS_FILE, 'w') as f:
+            json.dump(settings, f, indent=2)
         return True
     except Exception as e:
         return False
@@ -1302,6 +1337,9 @@ def chat_mode(api_key, model):
         except Exception as e:
             print(f"{colored('[WARNING]', Colors.YELLOW)} Could not load command history: {e}", file=sys.stderr)
     
+    # Load settings
+    settings = load_settings()
+    
     # Load stats and increment session count
     stats = load_stats()
     stats = update_stats(stats, sessions=1, model=model)
@@ -1444,6 +1482,10 @@ def chat_mode(api_key, model):
                             ('/notes', 'List all saved notes'),
                             ('/memory <text>', 'Add entry to long-term memory'),
                             ('/recall [query]', 'Search memory and notes'),
+                        ]),
+                        ('⚙️  Settings', [
+                            ('/settings', 'View and modify settings'),
+                            ('/set <key> <value>', 'Quick set a setting'),
                         ]),
                     ]
                     
@@ -1657,6 +1699,45 @@ def chat_mode(api_key, model):
                         print_completion("Added to memory", entry[:60] + "..." if len(entry) > 60 else entry)
                     else:
                         print_status("Failed to save to memory", 'error')
+                        print()
+                    continue
+                
+                elif command == "settings":
+                    print()
+                    print_header('⚙️  DeonAi Settings')
+                    print()
+                    
+                    table = Table(['Setting', 'Value'], style='single')
+                    for key, value in settings.items():
+                        table.add_row([
+                            colored(key.replace('_', ' ').title(), Colors.CYAN),
+                            colored(str(value), Colors.YELLOW)
+                        ])
+                    table.render()
+                    
+                    print(f"\n{colored('💡 Tip:', Colors.YELLOW)} Use {colored('/set <key> <value>', Colors.GREEN)} to change settings\n")
+                    continue
+                
+                elif command.startswith("set "):
+                    parts = user_input[5:].strip().split(maxsplit=1)
+                    if len(parts) < 2:
+                        print_status("Usage: /set <key> <value>", 'error')
+                        print()
+                        continue
+                    
+                    key, value = parts
+                    
+                    # Parse value type
+                    if value.lower() in ['true', 'false']:
+                        value = value.lower() == 'true'
+                    elif value.replace('.', '').isdigit():
+                        value = float(value) if '.' in value else int(value)
+                    
+                    settings[key] = value
+                    if save_settings(settings):
+                        print_completion(f"Setting updated: {key}", f"New value: {value}")
+                    else:
+                        print_status("Failed to save settings", 'error')
                         print()
                     continue
                 
