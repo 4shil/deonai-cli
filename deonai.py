@@ -1177,16 +1177,17 @@ def chat_mode(api_key, model):
     print(f"{colored('Chat Mode', Colors.CYAN, Colors.BOLD)} - Model: {colored(model, Colors.MAGENTA)}")
     print(f"{Colors.DIM}Type '/help' for commands or just chat naturally{Colors.RESET}\n")
     
-    # Setup readline for command history
-    CONFIG_DIR.mkdir(exist_ok=True)
-    if READLINE_HISTORY_FILE.exists():
-        try:
-            readline.read_history_file(READLINE_HISTORY_FILE)
-        except:
-            pass
+    # Setup readline for command history (if available)
+    CONFIG_DIR.mkdir(exist_ok=True, mode=0o755)
     
-    # Set history length
-    readline.set_history_length(1000)
+    if READLINE_AVAILABLE:
+        try:
+            if READLINE_HISTORY_FILE.exists():
+                readline.read_history_file(READLINE_HISTORY_FILE)
+            # Set history length
+            readline.set_history_length(1000)
+        except Exception as e:
+            print(f"{colored('[WARNING]', Colors.YELLOW)} Could not load command history: {e}", file=sys.stderr)
     
     # Load stats and increment session count
     stats = load_stats()
@@ -1233,11 +1234,12 @@ def chat_mode(api_key, model):
                 command = user_input[1:].lower()
                 
                 if command == "exit":
-                    # Save readline history before exit
-                    try:
-                        readline.write_history_file(READLINE_HISTORY_FILE)
-                    except:
-                        pass
+                    # Save readline history before exit (if available)
+                    if READLINE_AVAILABLE:
+                        try:
+                            readline.write_history_file(READLINE_HISTORY_FILE)
+                        except Exception:
+                            pass
                     
                     print()
                     print_divider('═', width=50, color=Colors.CYAN)
