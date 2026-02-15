@@ -1587,6 +1587,7 @@ def chat_mode(api_key, model):
                             ('/clear', 'Reset conversation history'),
                             ('/undo', 'Remove last message pair'),
                             ('/status', 'Show current configuration'),
+                            ('/quick <question>', 'One-shot query (no history)'),
                         ]),
                         ('🤖 AI Control', [
                             ('/models', 'List all available AI models'),
@@ -2359,6 +2360,86 @@ NEXT: [continue/complete]"""
                         session_name = f"auto_{time.strftime('%Y%m%d_%H%M%S')}"
                         save_session(session_name, auto_history, model)
                         print(f"{colored('[SUCCESS]', Colors.GREEN)} Saved as: {session_name}\n")
+                    
+                    continue
+                
+                elif command.startswith("quick "):
+                    quick_question = user_input[7:].strip()
+                    if not quick_question:
+                        print_status("Usage: /quick <question>", 'error')
+                        print()
+                        continue
+                    
+                    print()
+                    print(f"{colored('⚡ Quick Query:', Colors.CYAN)} {quick_question[:60]}...\n")
+                    
+                    # Show typing animation
+                    typing = TypingAnimation()
+                    typing.start()
+                    
+                    try:
+                        # One-shot query without history
+                        response = requests.post(
+                            f"{OPENROUTER_API_URL}/chat/completions",
+                            headers={
+                                "Authorization": f"Bearer {api_key}",
+                                "HTTP-Referer": "https://github.com/4shil/deonai-cli",
+                                "Content-Type": "application/json",
+                            },
+                            json={
+                                "model": model,
+                                "messages": [
+                                    {"role": "system", "content": "You are a helpful AI assistant. Be concise and direct."},
+                                    {"role": "user", "content": quick_question}
+                                ],
+                                "stream": True,
+                                "max_tokens": settings.get('max_tokens', 4096),
+                                "temperature": settings.get('temperature', 0.7)
+                            },
+                            timeout=60,
+                            stream=True
+                        )
+                        
+                        typing.stop()
+                        
+                        if response.status_code == 200:
+                            response_text = ""
+                            print(f"{colored('Assistant:', Colors.MAGENTA, Colors.BOLD)}\n")
+                            
+                            # Stream response
+                            for line in response.iter_lines():
+                                if line:
+                                    line_str = line.decode('utf-8')
+                                    if line_str.startswith('data: '):
+                                        data_str = line_str[6:]
+                                        if data_str.strip() == '[DONE]':
+                                            break
+                                        try:
+                                            data = json.loads(data_str)
+                                            if 'choices' in data and len(data['choices']) > 0:
+                                                delta = data['choices'][0].get('delta', {})
+                                                content = delta.get('content', '')
+                                                if content:
+                                                    print(content, end='', flush=True)
+                                                    response_text += content
+                                        except json.JSONDecodeError:
+                                            continue
+                            
+                            print(f"\n\n{colored('━' * 60, Colors.DIM)}")
+                            print(f"{colored('💡 Note:', Colors.YELLOW)} Quick queries don\'t affect conversation history\n")
+                            
+                            # Update stats but don't save to history
+                            tokens_used = estimate_tokens(quick_question + response_text)
+                            stats = load_stats()
+                            stats = update_stats(stats, total_messages=2, total_tokens=tokens_used, model=model)
+                            save_stats(stats)
+                        else:
+                            typing.stop()
+                            print(f"{colored('[ERROR]', Colors.RED)} API error: {response.status_code}\n")
+                    
+                    except Exception as e:
+                        typing.stop()
+                        print(f"{colored('[ERROR]', Colors.RED)} {str(e)}\n")
                     
                     continue
                 
