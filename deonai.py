@@ -576,6 +576,7 @@ STATS_FILE = CONFIG_DIR / "stats.json"
 MEMORY_FILE = CONFIG_DIR / "memory.md"
 NOTES_DIR = CONFIG_DIR / "notes"
 SETTINGS_FILE = CONFIG_DIR / "settings.json"
+SESSIONS_DIR = CONFIG_DIR / "sessions"
 
 # Memory and context settings
 MAX_CONTEXT_MESSAGES = 50  # Maximum messages to keep in context
@@ -865,6 +866,65 @@ def save_settings(settings):
         return True
     except Exception as e:
         return False
+
+
+def save_session(name, history, model):
+    """Save current session"""
+    try:
+        SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+        
+        session_file = SESSIONS_DIR / f"{name}.json"
+        session_data = {
+            'name': name,
+            'model': model,
+            'created': time.strftime('%Y-%m-%d %H:%M'),
+            'messages': len(history),
+            'history': history
+        }
+        
+        with open(session_file, 'w') as f:
+            json.dump(session_data, f, indent=2)
+        
+        return True, session_file
+    except Exception as e:
+        return False, str(e)
+
+
+def list_sessions():
+    """List all saved sessions"""
+    if not SESSIONS_DIR.exists():
+        return []
+    
+    sessions = []
+    for session_file in sorted(SESSIONS_DIR.glob('*.json')):
+        try:
+            with open(session_file, 'r') as f:
+                data = json.load(f)
+                sessions.append({
+                    'name': data.get('name', session_file.stem),
+                    'model': data.get('model', 'unknown'),
+                    'created': data.get('created', ''),
+                    'messages': data.get('messages', 0),
+                    'file': session_file.name
+                })
+        except:
+            pass
+    return sessions
+
+
+def load_session(name):
+    """Load a saved session"""
+    try:
+        session_file = SESSIONS_DIR / f"{name}.json"
+        if not session_file.exists():
+            return None, None, "Session not found"
+        
+        with open(session_file, 'r') as f:
+            data = json.load(f)
+        
+        return data.get('history', []), data.get('model'), None
+    except Exception as e:
+        return None, None, str(e)
 
 
 def fetch_openrouter_models(api_key):
@@ -1530,6 +1590,11 @@ def chat_mode(api_key, model):
                             ('/settings', 'View and modify settings'),
                             ('/set <key> <value>', 'Quick set a setting'),
                         ]),
+                        ('💾 Sessions', [
+                            ('/save <name>', 'Save current session'),
+                            ('/sessions', 'List saved sessions'),
+                            ('/load <name>', 'Load a saved session'),
+                        ]),
                     ]
                     
                     for section_title, commands in sections:
@@ -1812,6 +1877,68 @@ def chat_mode(api_key, model):
                     else:
                         print_status("Failed to save settings", 'error')
                         print()
+                    continue
+                
+                elif command.startswith("save "):
+                    session_name = user_input[6:].strip()
+                    if not session_name:
+                        print_status("Usage: /save <name>", 'error')
+                        print()
+                        continue
+                    
+                    success, result = save_session(session_name, history, model)
+                    if success:
+                        print_completion(f"Session saved: {session_name}", f"Messages: {len(history)}")
+                    else:
+                        print_status(f"Failed to save session: {result}", 'error')
+                        print()
+                    continue
+                
+                elif command == "sessions":
+                    sessions = list_sessions()
+                    
+                    if not sessions:
+                        print_status("No saved sessions", 'info')
+                        print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} Use {colored('/save <name>', Colors.GREEN)} to save current session\n")
+                        continue
+                    
+                    print()
+                    print_header(f'💾 Saved Sessions ({len(sessions)})')
+                    print()
+                    
+                    table = Table(['Name', 'Model', 'Messages', 'Created'], style='single')
+                    for session in sessions:
+                        table.add_row([
+                            colored(session['name'], Colors.CYAN),
+                            colored(session['model'][:30], Colors.DIM),
+                            colored(str(session['messages']), Colors.YELLOW),
+                            colored(session['created'], Colors.DIM)
+                        ])
+                    table.render()
+                    
+                    print(f"\n{colored('💡 Tip:', Colors.YELLOW)} Use {colored('/load <name>', Colors.GREEN)} to restore a session\n")
+                    continue
+                
+                elif command.startswith("load "):
+                    session_name = user_input[6:].strip()
+                    if not session_name:
+                        print_status("Usage: /load <name>", 'error')
+                        print()
+                        continue
+                    
+                    loaded_history, loaded_model, error = load_session(session_name)
+                    
+                    if error:
+                        print_status(f"Failed to load session: {error}", 'error')
+                        print()
+                        continue
+                    
+                    history = loaded_history
+                    if loaded_model:
+                        model = loaded_model
+                    
+                    save_history(history)
+                    print_completion(f"Session loaded: {session_name}", f"Restored {len(history)} messages with {model}")
                     continue
                 
                 # For file and other commands starting with /, strip slash and continue to old handlers
