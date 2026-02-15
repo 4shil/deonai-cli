@@ -1660,6 +1660,7 @@ def chat_mode(api_key, model):
                             ('/retry', 'Retry last message with different model'),
                             ('/compare', 'Compare responses from 3 models'),
                             ('/auto <task>', 'Autonomous mode for complex tasks'),
+                            ('/watch <file>', 'Monitor file and auto-respond to changes'),
                             ('/system', 'Change system prompt'),
                             ('"""', 'Start multiline input (end with """)'),
                         ]),
@@ -2599,6 +2600,118 @@ NEXT: [continue/complete]"""
                     else:
                         print_status(f"Failed to save template: {result}", 'error')
                         print()
+                    continue
+                
+                elif command.startswith("watch "):
+                    watch_file = user_input[7:].strip()
+                    if not watch_file:
+                        print_status("Usage: /watch <file>", 'error')
+                        print()
+                        continue
+                    
+                    from pathlib import Path
+                    watch_path = Path(watch_file)
+                    
+                    if not watch_path.exists():
+                        print_status(f"File not found: {watch_file}", 'error')
+                        print()
+                        continue
+                    
+                    print()
+                    print_header('👀 File Watch Mode')
+                    print(f"\n{colored('Monitoring:', Colors.CYAN)} {colored(watch_file, Colors.GREEN, Colors.BOLD)}")
+                    print(f"{colored('Press Ctrl+C to stop watching', Colors.DIM)}\n")
+                    
+                    # Get initial file state
+                    last_mtime = watch_path.stat().st_mtime
+                    last_content = watch_path.read_text()
+                    
+                    check_interval = 2  # seconds
+                    watch_active = True
+                    
+                    try:
+                        while watch_active:
+                            import time as time_module
+                            time_module.sleep(check_interval)
+                            
+                            current_mtime = watch_path.stat().st_mtime
+                            
+                            if current_mtime > last_mtime:
+                                # File changed!
+                                current_content = watch_path.read_text()
+                                
+                                print(f"\n{colored('[CHANGE DETECTED]', Colors.YELLOW, Colors.BOLD)} {time.strftime('%H:%M:%S')}\n")
+                                
+                                # Show diff (simple version)
+                                if len(current_content) > len(last_content):
+                                    added = len(current_content) - len(last_content)
+                                    print(f"{colored(f'+{added} characters', Colors.GREEN)}")
+                                elif len(current_content) < len(last_content):
+                                    removed = len(last_content) - len(current_content)
+                                    print(f"{colored(f'-{removed} characters', Colors.RED)}")
+                                
+                                # Auto-analyze the change
+                                prompt = f"""File '{watch_file}' was modified. 
+
+Previous length: {len(last_content)} chars
+Current length: {len(current_content)} chars
+
+Latest content:
+```
+{current_content[-500:] if len(current_content) > 500 else current_content}
+```
+
+Please briefly analyze what changed and provide insights."""
+                                
+                                typing = TypingAnimation()
+                                typing.start()
+                                
+                                try:
+                                    response = requests.post(
+                                        f"{OPENROUTER_API_URL}/chat/completions",
+                                        headers={
+                                            "Authorization": f"Bearer {api_key}",
+                                            "HTTP-Referer": "https://github.com/4shil/deonai-cli",
+                                            "Content-Type": "application/json",
+                                        },
+                                        json={
+                                            "model": model,
+                                            "messages": [
+                                                {"role": "system", "content": "You are a helpful code analyzer. Be brief and insightful."},
+                                                {"role": "user", "content": prompt}
+                                            ],
+                                            "stream": False,
+                                            "max_tokens": 300
+                                        },
+                                        timeout=30
+                                    )
+                                    
+                                    typing.stop()
+                                    
+                                    if response.status_code == 200:
+                                        data = response.json()
+                                        analysis = data['choices'][0]['message']['content']
+                                        
+                                        print(f"\n{colored('Analysis:', Colors.MAGENTA, Colors.BOLD)}")
+                                        print(analysis)
+                                        print(f"\n{colored('─' * 60, Colors.DIM)}")
+                                    else:
+                                        typing.stop()
+                                        print(f"{colored('[ERROR]', Colors.RED)} API error\n")
+                                
+                                except Exception as e:
+                                    typing.stop()
+                                    print(f"{colored('[ERROR]', Colors.RED)} {str(e)}\n")
+                                
+                                # Update state
+                                last_mtime = current_mtime
+                                last_content = current_content
+                                
+                                print(f"\n{colored('Watching...', Colors.DIM)}")
+                    
+                    except KeyboardInterrupt:
+                        print(f"\n\n{colored('[INFO]', Colors.BLUE)} Watch mode stopped\n")
+                    
                     continue
                 
                 else:
