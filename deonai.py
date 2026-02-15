@@ -574,6 +574,10 @@ SYSTEM_PROMPT_FILE = CONFIG_DIR / "system_prompt.txt"
 READLINE_HISTORY_FILE = CONFIG_DIR / ".deonai_readline_history"
 STATS_FILE = CONFIG_DIR / "stats.json"
 
+# Memory and context settings
+MAX_CONTEXT_MESSAGES = 50  # Maximum messages to keep in context
+CONTEXT_TRIM_TO = 30       # Trim to this many when limit reached
+
 # OpenRouter API settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
 MODELS_CACHE_FILE = CONFIG_DIR / "models_cache.json"
@@ -694,6 +698,32 @@ def update_stats(stats, **kwargs):
             stats['models_used'] = models
     
     return stats
+
+
+def trim_context(history, max_messages=MAX_CONTEXT_MESSAGES, trim_to=CONTEXT_TRIM_TO):
+    """Trim conversation history to save memory and tokens"""
+    if len(history) <= max_messages:
+        return history, False
+    
+    # Keep system message if present
+    system_msgs = [msg for msg in history if msg.get('role') == 'system']
+    
+    # Get recent messages (alternating user/assistant)
+    recent = history[-trim_to:]
+    
+    # Combine: system + recent
+    trimmed = system_msgs + recent
+    
+    return trimmed, True
+
+
+def summarize_context(history):
+    """Generate a summary of trimmed context (future enhancement)"""
+    # This could use AI to summarize old messages
+    # For now, just count what was removed
+    user_msgs = sum(1 for msg in history if msg['role'] == 'user')
+    assistant_msgs = sum(1 for msg in history if msg['role'] == 'assistant')
+    return f"Previous context: {user_msgs} user messages, {assistant_msgs} assistant responses"
 
 
 def fetch_openrouter_models(api_key):
