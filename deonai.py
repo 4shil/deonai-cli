@@ -1535,6 +1535,9 @@ def chat_mode(api_key, model):
     # Load settings
     settings = load_settings()
     
+    # Voice mode state
+    voice_mode = settings.get('voice_mode', False)
+    
     # Load stats and increment session count
     stats = load_stats()
     stats = update_stats(stats, sessions=1, model=model)
@@ -1661,6 +1664,7 @@ def chat_mode(api_key, model):
                             ('/compare', 'Compare responses from 3 models'),
                             ('/auto <task>', 'Autonomous mode for complex tasks'),
                             ('/watch <file>', 'Monitor file and auto-respond to changes'),
+                            ('/voice', 'Toggle voice mode (TTS for responses)'),
                             ('/system', 'Change system prompt'),
                             ('"""', 'Start multiline input (end with """)'),
                         ]),
@@ -2714,6 +2718,44 @@ Please briefly analyze what changed and provide insights."""
                     
                     continue
                 
+                elif command == "voice":
+                    voice_mode = not voice_mode
+                    settings['voice_mode'] = voice_mode
+                    save_settings(settings)
+                    
+                    status = colored('ENABLED', Colors.GREEN, Colors.BOLD) if voice_mode else colored('DISABLED', Colors.DIM)
+                    print()
+                    print(f"{colored('🔊 Voice Mode:', Colors.CYAN)} {status}")
+                    
+                    if voice_mode:
+                        print(f"\n{colored('Features:', Colors.YELLOW)}")
+                        print(f"  • Responses will be read aloud (if TTS available)")
+                        print(f"  • Best for hands-free operation")
+                        print(f"  • Works with system TTS (say/espeak)")
+                        
+                        # Check if TTS is available
+                        tts_available = False
+                        try:
+                            if IS_MACOS:
+                                result = subprocess.run(['which', 'say'], capture_output=True)
+                                tts_available = result.returncode == 0
+                            elif IS_LINUX:
+                                result = subprocess.run(['which', 'espeak'], capture_output=True)
+                                if result.returncode != 0:
+                                    result = subprocess.run(['which', 'festival'], capture_output=True)
+                                tts_available = result.returncode == 0
+                        except:
+                            pass
+                        
+                        if tts_available:
+                            print(f"\n{colored('✓', Colors.GREEN)} TTS engine detected")
+                        else:
+                            print(f"\n{colored('⚠', Colors.YELLOW)} No TTS engine found")
+                            print(f"  {colored('Install:', Colors.DIM)} sudo apt install espeak (Linux) or use 'say' (macOS)")
+                    
+                    print()
+                    continue
+                
                 else:
                     # Unknown slash command
                     print(f"{colored('[ERROR]', Colors.RED)} Unknown command: /{command}")
@@ -3331,6 +3373,27 @@ Please briefly analyze what changed and provide insights."""
                 
                 history.append({"role": "assistant", "content": assistant_text})
                 save_history(history)
+                
+                # Voice mode - read response aloud
+                if voice_mode and assistant_text:
+                    try:
+                        # Keep response short for TTS
+                        tts_text = assistant_text[:500] if len(assistant_text) > 500 else assistant_text
+                        
+                        if IS_MACOS:
+                            subprocess.Popen(['say', tts_text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        elif IS_LINUX:
+                            # Try espeak first
+                            result = subprocess.run(['which', 'espeak'], capture_output=True)
+                            if result.returncode == 0:
+                                subprocess.Popen(['espeak', tts_text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            else:
+                                # Try festival
+                                result = subprocess.run(['which', 'festival'], capture_output=True)
+                                if result.returncode == 0:
+                                    subprocess.Popen(['festival', '--tts'], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).communicate(tts_text.encode())
+                    except:
+                        pass  # Silently fail if TTS not available
                 
                 # Update statistics
                 stats = load_stats()
