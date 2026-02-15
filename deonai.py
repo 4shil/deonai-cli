@@ -1593,6 +1593,7 @@ def chat_mode(api_key, model):
                             ('/switch', 'Quick switch to another model'),
                             ('/retry', 'Retry last message with different model'),
                             ('/compare', 'Compare responses from 3 models'),
+                            ('/auto <task>', 'Autonomous mode for complex tasks'),
                             ('/system', 'Change system prompt'),
                             ('"""', 'Start multiline input (end with """)'),
                         ]),
@@ -2241,6 +2242,124 @@ def chat_mode(api_key, model):
                     
                     print_divider('═', width=70)
                     print(f"\n{colored('💡 Tip:', Colors.YELLOW)} Use {colored('/switch', Colors.GREEN)} to change to your preferred model\n")
+                    continue
+                
+                elif command.startswith("auto "):
+                    task_description = user_input[6:].strip()
+                    if not task_description:
+                        print_status("Usage: /auto <task description>", 'error')
+                        print()
+                        continue
+                    
+                    print()
+                    print_header('🤖 Autonomous Mode')
+                    print(f"\n{colored('Task:', Colors.CYAN)} {task_description}\n")
+                    
+                    # Auto-mode system prompt
+                    auto_prompt = """You are an autonomous AI agent. Break down the task into clear steps and execute them.
+For each step:
+1. State what you're doing
+2. Execute the action
+3. Verify the result
+4. Move to next step
+
+Format your response as:
+STEP N: [description]
+ACTION: [what you're doing]
+RESULT: [outcome]
+NEXT: [continue/complete]"""
+                    
+                    # Create autonomous context
+                    auto_history = [
+                        {"role": "system", "content": auto_prompt},
+                        {"role": "user", "content": f"Task: {task_description}\n\nBreak this down and execute step by step."}
+                    ]
+                    
+                    max_iterations = 5
+                    completed = False
+                    
+                    for iteration in range(1, max_iterations + 1):
+                        print(f"{colored(f'[Iteration {iteration}/{max_iterations}]', Colors.BLUE)}")
+                        
+                        typing = TypingAnimation()
+                        typing.start()
+                        
+                        try:
+                            response = requests.post(
+                                f"{OPENROUTER_API_URL}/chat/completions",
+                                headers={
+                                    "Authorization": f"Bearer {api_key}",
+                                    "HTTP-Referer": "https://github.com/4shil/deonai-cli",
+                                    "Content-Type": "application/json",
+                                },
+                                json={
+                                    "model": model,
+                                    "messages": auto_history,
+                                    "stream": False,
+                                    "max_tokens": settings.get('max_tokens', 4096)
+                                },
+                                timeout=60
+                            )
+                            
+                            typing.stop()
+                            
+                            if response.status_code == 200:
+                                data = response.json()
+                                assistant_response = data['choices'][0]['message']['content']
+                                
+                                # Display response with syntax highlighting
+                                print()
+                                if PYGMENTS_AVAILABLE:
+                                    try:
+                                        highlighted = highlight(assistant_response, MarkdownLexer(), TerminalFormatter())
+                                        print(highlighted)
+                                    except:
+                                        print(assistant_response)
+                                else:
+                                    print(assistant_response)
+                                print()
+                                
+                                # Add to auto history
+                                auto_history.append({"role": "assistant", "content": assistant_response})
+                                
+                                # Check if task is complete
+                                if "NEXT: complete" in assistant_response.lower() or "task complete" in assistant_response.lower():
+                                    print(f"{colored('[SUCCESS]', Colors.GREEN, Colors.BOLD)} Task completed!\n")
+                                    completed = True
+                                    break
+                                
+                                # Ask if user wants to continue or intervene
+                                if iteration < max_iterations:
+                                    continue_choice = input(f"{colored('Continue?', Colors.CYAN)} (y/n/message): ").strip().lower()
+                                    if continue_choice == 'n':
+                                        print(f"\n{colored('[INFO]', Colors.BLUE)} Auto mode stopped by user\n")
+                                        break
+                                    elif continue_choice not in ['', 'y', 'yes']:
+                                        # User wants to provide guidance
+                                        auto_history.append({"role": "user", "content": continue_choice})
+                                    else:
+                                        # Continue automatically
+                                        auto_history.append({"role": "user", "content": "Continue to next step."})
+                            else:
+                                typing.stop()
+                                print(f"{colored('[ERROR]', Colors.RED)} API error: {response.status_code}\n")
+                                break
+                        
+                        except Exception as e:
+                            typing.stop()
+                            print(f"{colored('[ERROR]', Colors.RED)} {str(e)}\n")
+                            break
+                    
+                    if not completed and iteration >= max_iterations:
+                        print(f"{colored('[WARNING]', Colors.YELLOW)} Max iterations reached. Task may be incomplete.\n")
+                    
+                    # Ask if user wants to save the session
+                    save_choice = input(f"{colored('Save auto session?', Colors.CYAN)} (y/N): ").strip().lower()
+                    if save_choice == 'y':
+                        session_name = f"auto_{time.strftime('%Y%m%d_%H%M%S')}"
+                        save_session(session_name, auto_history, model)
+                        print(f"{colored('[SUCCESS]', Colors.GREEN)} Saved as: {session_name}\n")
+                    
                     continue
                 
                 else:
