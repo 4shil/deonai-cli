@@ -1592,6 +1592,7 @@ def chat_mode(api_key, model):
                             ('/models', 'List all available AI models'),
                             ('/switch', 'Quick switch to another model'),
                             ('/retry', 'Retry last message with different model'),
+                            ('/compare', 'Compare responses from 3 models'),
                             ('/system', 'Change system prompt'),
                             ('"""', 'Start multiline input (end with """)'),
                         ]),
@@ -2144,6 +2145,102 @@ def chat_mode(api_key, model):
                     
                     print_completion(f"Conversation exported", f"Format: {export_format.upper()}")
                     print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} Saved to: {colored(export_file.name, Colors.CYAN)}\n")
+                    continue
+                
+                elif command == "compare":
+                    if not history or len(history) < 1:
+                        print_status("Need at least one message to compare", 'error')
+                        print()
+                        continue
+                    
+                    # Get last user message
+                    last_user_msg = None
+                    for msg in reversed(history):
+                        if msg['role'] == 'user':
+                            last_user_msg = msg['content']
+                            break
+                    
+                    if not last_user_msg:
+                        print_status("No user message found", 'error')
+                        print()
+                        continue
+                    
+                    # Quick comparison models (fast, medium, advanced)
+                    compare_models = [
+                        "google/gemini-2.0-flash-exp:free",
+                        "anthropic/claude-3.5-sonnet",
+                        "openai/gpt-4o"
+                    ]
+                    
+                    print()
+                    print_header(f'⚖️  Model Comparison')
+                    print(f"\n{colored('Prompt:', Colors.CYAN)} {last_user_msg[:100]}...\n")
+                    
+                    responses = []
+                    
+                    for i, compare_model in enumerate(compare_models, 1):
+                        print(f"{colored(f'[{i}/3]', Colors.BLUE)} Testing {colored(compare_model, Colors.MAGENTA)}...", end='', flush=True)
+                        
+                        try:
+                            # Get streaming preference
+                            use_streaming = False  # Disable for comparison
+                            
+                            response = requests.post(
+                                f"{OPENROUTER_API_URL}/chat/completions",
+                                headers={
+                                    "Authorization": f"Bearer {api_key}",
+                                    "HTTP-Referer": "https://github.com/4shil/deonai-cli",
+                                    "Content-Type": "application/json",
+                                },
+                                json={
+                                    "model": compare_model,
+                                    "messages": [
+                                        {"role": "system", "content": "You are a helpful AI assistant. Be concise."}
+                                    ] + [{"role": "user", "content": last_user_msg}],
+                                    "stream": use_streaming,
+                                    "max_tokens": 500  # Keep responses short for comparison
+                                },
+                                timeout=30
+                            )
+                            
+                            if response.status_code == 200:
+                                data = response.json()
+                                response_text = data['choices'][0]['message']['content']
+                                responses.append({
+                                    'model': compare_model,
+                                    'response': response_text,
+                                    'tokens': data['usage'].get('total_tokens', 0) if 'usage' in data else estimate_tokens(response_text)
+                                })
+                                print(f" {colored('✓', Colors.GREEN)}")
+                            else:
+                                print(f" {colored('✗', Colors.RED)} (failed)")
+                                responses.append({
+                                    'model': compare_model,
+                                    'response': f"Error: {response.status_code}",
+                                    'tokens': 0
+                                })
+                        except Exception as e:
+                            print(f" {colored('✗', Colors.RED)} (error)")
+                            responses.append({
+                                'model': compare_model,
+                                'response': f"Error: {str(e)}",
+                                'tokens': 0
+                            })
+                    
+                    # Display comparison
+                    print()
+                    print_divider('═', width=70)
+                    
+                    for i, resp in enumerate(responses, 1):
+                        model_short = resp['model'].split('/')[-1][:40]
+                        print(f"\n{colored(f'[{i}]', Colors.BLUE)} {colored(model_short, Colors.MAGENTA, Colors.BOLD)}")
+                        print(f"{colored('Tokens:', Colors.DIM)} {resp['tokens']}")
+                        print(f"{colored('─' * 70, Colors.DIM)}")
+                        print(resp['response'][:500] + ("..." if len(resp['response']) > 500 else ""))
+                        print()
+                    
+                    print_divider('═', width=70)
+                    print(f"\n{colored('💡 Tip:', Colors.YELLOW)} Use {colored('/switch', Colors.GREEN)} to change to your preferred model\n")
                     continue
                 
                 else:
