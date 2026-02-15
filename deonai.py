@@ -577,6 +577,7 @@ MEMORY_FILE = CONFIG_DIR / "memory.md"
 NOTES_DIR = CONFIG_DIR / "notes"
 SETTINGS_FILE = CONFIG_DIR / "settings.json"
 SESSIONS_DIR = CONFIG_DIR / "sessions"
+TEMPLATES_DIR = CONFIG_DIR / "templates"
 
 # Memory and context settings
 MAX_CONTEXT_MESSAGES = 50  # Maximum messages to keep in context
@@ -952,6 +953,70 @@ def estimate_cost(tokens, model_name):
             break
     
     return (tokens / 1_000_000) * cost_per_million
+
+
+def save_template(name, content, category="general"):
+    """Save a prompt template"""
+    try:
+        TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
+        
+        template_data = {
+            'name': name,
+            'content': content,
+            'category': category,
+            'created': time.strftime('%Y-%m-%d %H:%M'),
+            'uses': 0
+        }
+        
+        template_file = TEMPLATES_DIR / f"{name}.json"
+        with open(template_file, 'w') as f:
+            json.dump(template_data, f, indent=2)
+        
+        return True, template_file
+    except Exception as e:
+        return False, str(e)
+
+
+def list_templates(category=None):
+    """List all saved templates"""
+    if not TEMPLATES_DIR.exists():
+        return []
+    
+    templates = []
+    for template_file in sorted(TEMPLATES_DIR.glob('*.json')):
+        try:
+            with open(template_file, 'r') as f:
+                data = json.load(f)
+                if category is None or data.get('category') == category:
+                    templates.append({
+                        'name': data.get('name', template_file.stem),
+                        'content': data.get('content', '')[:100],
+                        'category': data.get('category', 'general'),
+                        'uses': data.get('uses', 0)
+                    })
+        except:
+            pass
+    return templates
+
+
+def load_template(name):
+    """Load a template and increment use count"""
+    try:
+        template_file = TEMPLATES_DIR / f"{name}.json"
+        if not template_file.exists():
+            return None, "Template not found"
+        
+        with open(template_file, 'r') as f:
+            data = json.load(f)
+        
+        # Increment use counter
+        data['uses'] = data.get('uses', 0) + 1
+        with open(template_file, 'w') as f:
+            json.dump(data, f, indent=2)
+        
+        return data.get('content'), None
+    except Exception as e:
+        return None, str(e)
 
 
 def fetch_openrouter_models(api_key):
@@ -1609,6 +1674,11 @@ def chat_mode(api_key, model):
                             ('/profile', 'Manage profiles (save/load/list)'),
                             ('/export [format]', 'Export conversation (md/json/txt)'),
                             ('/stats', 'View usage statistics'),
+                        ]),
+                        ('📝 Templates', [
+                            ('/template <name>', 'Use a saved template'),
+                            ('/templates', 'List all templates'),
+                            ('/save-template <name>', 'Save current prompt as template'),
                         ]),
                         ('🧠 Memory & Notes', [
                             ('/note <title>', 'Save current context as a note'),
@@ -2441,6 +2511,94 @@ NEXT: [continue/complete]"""
                         typing.stop()
                         print(f"{colored('[ERROR]', Colors.RED)} {str(e)}\n")
                     
+                    continue
+                
+                elif command == "templates":
+                    templates = list_templates()
+                    
+                    if not templates:
+                        print_status("No templates saved yet", 'info')
+                        print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} Use {colored('/save-template <name>', Colors.GREEN)} to create one\n")
+                        continue
+                    
+                    print()
+                    print_header(f'📝 Prompt Templates ({len(templates)})')
+                    print()
+                    
+                    # Group by category
+                    categories = {}
+                    for tmpl in templates:
+                        cat = tmpl['category']
+                        if cat not in categories:
+                            categories[cat] = []
+                        categories[cat].append(tmpl)
+                    
+                    for category, tmpls in categories.items():
+                        print(f"{colored(f'📁 {category.title()}', Colors.CYAN, Colors.BOLD)}")
+                        for tmpl in tmpls:
+                            preview = tmpl['content'][:50] + "..." if len(tmpl['content']) > 50 else tmpl['content']
+                            print(f"  {colored('•', Colors.DIM)} {colored(tmpl['name'], Colors.GREEN)} {colored(f'(used {tmpl['uses']}x)', Colors.DIM)}")
+                            print(f"    {colored(preview, Colors.DIM)}")
+                        print()
+                    
+                    print(f"{colored('💡 Tip:', Colors.YELLOW)} Use {colored('/template <name>', Colors.GREEN)} to use a template\n")
+                    continue
+                
+                elif command.startswith("template "):
+                    template_name = user_input[10:].strip()
+                    if not template_name:
+                        print_status("Usage: /template <name>", 'error')
+                        print()
+                        continue
+                    
+                    content, error = load_template(template_name)
+                    if error:
+                        print_status(f"Failed to load template: {error}", 'error')
+                        print()
+                        continue
+                    
+                    # Use template as user input
+                    print()
+                    print(f"{colored('📝 Using template:', Colors.CYAN)} {colored(template_name, Colors.GREEN, Colors.BOLD)}\n")
+                    print(f"{colored('Prompt:', Colors.DIM)}")
+                    print(f"{content}\n")
+                    
+                    # Add to history and process
+                    history.append({"role": "user", "content": content})
+                    
+                    # Continue to main chat processing (don't continue loop)
+                    user_input = content
+                    # Fall through to normal processing
+                
+                elif command.startswith("save-template "):
+                    template_name = user_input[15:].strip()
+                    if not template_name:
+                        print_status("Usage: /save-template <name>", 'error')
+                        print()
+                        continue
+                    
+                    # Get last user message as template
+                    last_user_msg = None
+                    for msg in reversed(history):
+                        if msg['role'] == 'user':
+                            last_user_msg = msg['content']
+                            break
+                    
+                    if not last_user_msg:
+                        print_status("No user message to save as template", 'error')
+                        print()
+                        continue
+                    
+                    # Ask for category
+                    print(f"\n{colored('Categories:', Colors.CYAN)} code, writing, analysis, general")
+                    category = input(f"{colored('Category:', Colors.CYAN)} ").strip() or "general"
+                    
+                    success, result = save_template(template_name, last_user_msg, category)
+                    if success:
+                        print_completion(f"Template saved: {template_name}", f"Category: {category}")
+                    else:
+                        print_status(f"Failed to save template: {result}", 'error')
+                        print()
                     continue
                 
                 else:
