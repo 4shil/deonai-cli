@@ -1594,6 +1594,7 @@ def chat_mode(api_key, model):
                             ('/save <name>', 'Save current session'),
                             ('/sessions', 'List saved sessions'),
                             ('/load <name>', 'Load a saved session'),
+                            ('/fork [n]', 'Branch from message N (default: last)'),
                         ]),
                     ]
                     
@@ -1939,6 +1940,45 @@ def chat_mode(api_key, model):
                     
                     save_history(history)
                     print_completion(f"Session loaded: {session_name}", f"Restored {len(history)} messages with {model}")
+                    continue
+                
+                elif command.startswith("fork"):
+                    parts = user_input[6:].strip()
+                    
+                    if not history:
+                        print_status("No conversation to fork from", 'error')
+                        print()
+                        continue
+                    
+                    # Parse message number
+                    if parts:
+                        try:
+                            fork_point = int(parts)
+                            if fork_point < 1 or fork_point > len(history):
+                                print_status(f"Invalid message number. Must be 1-{len(history)}", 'error')
+                                print()
+                                continue
+                        except ValueError:
+                            print_status("Usage: /fork [message_number]", 'error')
+                            print()
+                            continue
+                    else:
+                        # Fork from current point
+                        fork_point = len(history)
+                    
+                    # Create forked history
+                    forked_history = history[:fork_point]
+                    
+                    # Auto-save current as "before_fork"
+                    timestamp = time.strftime('%Y%m%d_%H%M%S')
+                    save_session(f"before_fork_{timestamp}", history, model)
+                    
+                    # Replace with forked
+                    history = forked_history
+                    save_history(history)
+                    
+                    print_completion("Conversation forked", f"Branched from message {fork_point}")
+                    print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} Original saved as: {colored(f'before_fork_{timestamp}', Colors.CYAN)}\n")
                     continue
                 
                 # For file and other commands starting with /, strip slash and continue to old handlers
