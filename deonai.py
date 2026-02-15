@@ -2231,14 +2231,37 @@ def chat_mode(api_key, model):
             
             history.append({"role": "user", "content": user_input})
             
+            # Trim context if needed
+            context_limit = settings.get('context_limit', MAX_CONTEXT_MESSAGES)
+            if len(history) > context_limit:
+                history, was_trimmed = trim_context(history, context_limit, CONTEXT_TRIM_TO)
+                if was_trimmed and settings.get('auto_save', True):
+                    save_history(history)
+                    print(f"{colored('[INFO]', Colors.BLUE)} Context trimmed to save memory\n")
+            
             # Show typing animation
             typing = TypingAnimation()
             typing.start()
             
             # Call OpenRouter API
             try:
-                # Try streaming first
-                use_streaming = True
+                # Get streaming preference from settings
+                use_streaming = settings.get('streaming', True)
+                
+                # Prepare API request with settings
+                api_payload = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": load_system_prompt()}
+                    ] + history,
+                    "stream": use_streaming
+                }
+                
+                # Add optional settings
+                if settings.get('temperature') is not None:
+                    api_payload['temperature'] = settings['temperature']
+                if settings.get('max_tokens') is not None:
+                    api_payload['max_tokens'] = settings['max_tokens']
                 
                 response = requests.post(
                     f"{OPENROUTER_API_URL}/chat/completions",
@@ -2247,13 +2270,7 @@ def chat_mode(api_key, model):
                         "HTTP-Referer": "https://github.com/4shil/deonai-cli",
                         "Content-Type": "application/json",
                     },
-                    json={
-                        "model": model,
-                        "messages": [
-                            {"role": "system", "content": load_system_prompt()}
-                        ] + history,
-                        "stream": use_streaming
-                    },
+                    json=api_payload,
                     timeout=60,
                     stream=use_streaming
                 )
