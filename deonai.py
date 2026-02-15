@@ -1604,7 +1604,7 @@ def chat_mode(api_key, model):
                         ('🔧 Utilities', [
                             ('/search <query>', 'Search conversation history'),
                             ('/profile', 'Manage profiles (save/load/list)'),
-                            ('/export', 'Export conversation to file'),
+                            ('/export [format]', 'Export conversation (md/json/txt)'),
                             ('/stats', 'View usage statistics'),
                         ]),
                         ('🧠 Memory & Notes', [
@@ -2076,9 +2076,75 @@ def chat_mode(api_key, model):
                     continue
                 
                 # For file and other commands starting with /, strip slash and continue to old handlers
-                elif command.startswith(('read', 'ls', 'run', 'init', 'search', 'profile', 'export', 'retry', 'system')):
+                elif command.startswith(('read', 'ls', 'run', 'init', 'search', 'profile', 'retry', 'system')):
                     user_input = user_input[1:]  # Strip the slash
                     # Will be processed by old handlers below
+                
+                elif command.startswith("export"):
+                    if not history:
+                        print_status("No conversation to export", 'error')
+                        print()
+                        continue
+                    
+                    # Parse format
+                    parts = command.split(maxsplit=1)
+                    export_format = parts[1] if len(parts) > 1 else 'md'
+                    export_format = export_format.lower()
+                    
+                    if export_format not in ['md', 'json', 'txt']:
+                        print_status("Invalid format. Use: md, json, or txt", 'error')
+                        print()
+                        continue
+                    
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    
+                    if export_format == 'md':
+                        export_file = CONFIG_DIR / f"conversation_{timestamp}.md"
+                        with open(export_file, 'w') as f:
+                            f.write(f"# DeonAi Conversation Export\n\n")
+                            f.write(f"**Model:** {model}\n")
+                            f.write(f"**Date:** {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                            f.write(f"**Messages:** {len(history)}\n\n")
+                            f.write("---\n\n")
+                            
+                            for i, msg in enumerate(history, 1):
+                                role = msg['role'].title()
+                                content = msg['content']
+                                f.write(f"## Message {i} - {role}\n\n")
+                                f.write(f"{content}\n\n")
+                                f.write("---\n\n")
+                    
+                    elif export_format == 'json':
+                        export_file = CONFIG_DIR / f"conversation_{timestamp}.json"
+                        export_data = {
+                            'model': model,
+                            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                            'messages': len(history),
+                            'history': history,
+                            'settings': settings
+                        }
+                        with open(export_file, 'w') as f:
+                            json.dump(export_data, f, indent=2)
+                    
+                    elif export_format == 'txt':
+                        export_file = CONFIG_DIR / f"conversation_{timestamp}.txt"
+                        with open(export_file, 'w') as f:
+                            f.write(f"DeonAi Conversation Export\n")
+                            f.write(f"Model: {model}\n")
+                            f.write(f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                            f.write(f"Messages: {len(history)}\n")
+                            f.write("=" * 60 + "\n\n")
+                            
+                            for i, msg in enumerate(history, 1):
+                                role = msg['role'].upper()
+                                content = msg['content']
+                                f.write(f"[{i}] {role}:\n")
+                                f.write(f"{content}\n")
+                                f.write("-" * 60 + "\n\n")
+                    
+                    print_completion(f"Conversation exported", f"Format: {export_format.upper()}")
+                    print(f"  {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} Saved to: {colored(export_file.name, Colors.CYAN)}\n")
+                    continue
                 
                 else:
                     # Unknown slash command
