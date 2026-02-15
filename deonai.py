@@ -2,6 +2,8 @@
 """
 DeonAi CLI - Your personal AI assistant in the terminal
 Simple, fast, customized for you. Powered by OpenRouter.
+
+Linux Compatible - Tested on Ubuntu, Debian, Fedora, Arch
 """
 
 import sys
@@ -12,8 +14,20 @@ import re
 import threading
 import time
 import shutil
-import readline
 from pathlib import Path
+
+# Platform detection
+IS_LINUX = sys.platform.startswith('linux')
+IS_MACOS = sys.platform == 'darwin'
+IS_WINDOWS = sys.platform == 'win32'
+
+# Readline support (graceful fallback)
+try:
+    import readline
+    READLINE_AVAILABLE = True
+except ImportError:
+    READLINE_AVAILABLE = False
+    print("[WARNING] readline not available - command history disabled", file=sys.stderr)
 
 try:
     from pygments import highlight
