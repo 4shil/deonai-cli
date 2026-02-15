@@ -927,6 +927,33 @@ def load_session(name):
         return None, None, str(e)
 
 
+def estimate_tokens(text):
+    """Rough token estimation (1 token ≈ 4 characters)"""
+    return len(text) // 4
+
+
+def estimate_cost(tokens, model_name):
+    """Estimate cost based on model pricing (rough estimates)"""
+    # Rough pricing per 1M tokens (input + output averaged)
+    pricing = {
+        'claude-sonnet': 3.00,
+        'claude-opus': 15.00,
+        'gpt-4': 30.00,
+        'gpt-3.5': 0.50,
+        'gemini': 0.00,  # Free tier
+        'llama': 0.20,
+    }
+    
+    # Match model to pricing
+    cost_per_million = 1.00  # Default
+    for key, price in pricing.items():
+        if key in model_name.lower():
+            cost_per_million = price
+            break
+    
+    return (tokens / 1_000_000) * cost_per_million
+
+
 def fetch_openrouter_models(api_key):
     """Fetch all available models from OpenRouter"""
     try:
@@ -1673,17 +1700,21 @@ def chat_mode(api_key, model):
                     print_header('📊 DeonAi Status Dashboard')
                     print()
                     
+                    # Calculate costs
+                    estimated_cost = estimate_cost(total_tokens, model)
+                    
                     # Status info with icons
                     config_data = [
                         (f"{StatusIcons.ROBOT} Model", colored(model, Colors.CYAN, Colors.BOLD)),
                         (f"{StatusIcons.BRAIN} Messages", colored(str(len(history)), Colors.MAGENTA)),
-                        (f"{StatusIcons.LIGHTNING} Tokens", colored(str(total_tokens), Colors.YELLOW)),
-                        (f"{StatusIcons.GEAR} System Prompt", colored('Custom' if SYSTEM_PROMPT_FILE.exists() else 'Default', Colors.GREEN)),
+                        (f"{StatusIcons.LIGHTNING} Tokens (session)", colored(str(total_tokens), Colors.YELLOW)),
+                        (f"{StatusIcons.FIRE} Est. Cost (session)", colored(f"${estimated_cost:.4f}", Colors.GREEN)),
+                        (f"{StatusIcons.GEAR} Temperature", colored(str(settings.get('temperature', 0.7)), Colors.CYAN)),
                         (f"{StatusIcons.FOLDER} Config", colored(str(CONFIG_FILE), Colors.DIM)),
                     ]
                     
                     for label, value in config_data:
-                        print(f"  {label:20} {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} {value}")
+                        print(f"  {label:25} {colored(StatusIcons.ARROW_RIGHT, Colors.DIM)} {value}")
                     
                     print()
                     print_divider('─', width=60)
