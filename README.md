@@ -1,95 +1,165 @@
 # deonai-cli
 
-A personal AI assistant for the terminal. One command to query, one command to chat — powered by OpenRouter with access to 200+ models including Claude, GPT-4, Gemini, and Llama.
+A personal AI assistant for the terminal. Talks to 200+ models through OpenRouter, reads and writes files directly, tracks git context, and keeps conversation history — all from the command line.
 
-![terminal ai demo](https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif)
+![demo](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcm9jcG43bHo4NzJhYXRrZ2h2cGZobnE4bmhsMWx4cW1ra3V6ZzY0YSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT9IgzoKnwFNmISR8I/giphy.gif)
 
-## Installation
+---
 
-**Linux / macOS**
+## What it does
+
+- Chat with any LLM model available on OpenRouter directly from your terminal
+- Ask it to create or modify files — it writes them automatically using a `WRITE_FILE:` pattern it detects in responses
+- Git-aware: reads your current repo context and includes it in conversations
+- Persistent history stored at `~/.deonai/`
+- Multiple profiles for different configurations and system prompts
+
+---
+
+## Stack
+
+- Python 3.10+
+- requests (HTTP to OpenRouter)
+- colorama + pygments (terminal UI)
+- No framework — pure CLI
+
+---
+
+## Install
+
+**Linux/macOS**
 
 ```bash
 git clone https://github.com/4shil/deonai-cli.git
 cd deonai-cli
+chmod +x install.sh
 ./install.sh
-deonai --setup
 ```
 
 **Windows**
 
-```batch
-git clone https://github.com/4shil/deonai-cli.git
-cd deonai-cli
+```cmd
 install-windows.bat
-deonai --setup
 ```
 
-Get your API key at [openrouter.ai/keys](https://openrouter.ai/keys) and paste it during `--setup`.
+The installer sets up a virtual environment, installs dependencies, and adds `deonai` to your PATH.
+
+---
+
+## Setup
+
+On first run, set your OpenRouter API key:
+
+```bash
+deonai config set api_key YOUR_OPENROUTER_KEY
+```
+
+Get a free key at [openrouter.ai](https://openrouter.ai).
+
+---
 
 ## Usage
 
 ```bash
-# One-shot query
-deonai "explain docker volumes"
+# Start a conversation
+deonai chat
 
-# Interactive chat mode
-deonai
+# Ask a one-off question
+deonai ask "how do I reverse a list in Python"
 
-# Use a specific model
-deonai --model anthropic/claude-3.5-sonnet "refactor this function"
+# List available models
+deonai models
 
-# Add a file as context
-deonai --file main.py "what does this do?"
+# Switch model
+deonai config set model anthropic/claude-3-haiku
 
-# Switch models mid-session
-/model gpt-4o
+# View history
+deonai history
 
-# Export conversation
-deonai --export markdown
+# Run tests
+pytest
 ```
 
-## Features
+---
 
-- One-shot queries and persistent interactive chat
-- Conversation memory within a session
-- 200+ models via a single OpenRouter API key
-- Streaming responses (token-by-token)
-- File context — attach files for AI to analyze
-- AI-driven file creation and code execution
-- Conversation search and export (Markdown / JSON)
-- Token usage tracking
-- Multiple configuration profiles
+## File operations
 
-## Project Structure
+Ask it to write files during a conversation:
+
+```
+You: create a FastAPI hello world app in main.py
+DeonAi: WRITE_FILE: main.py
+        ```python
+        from fastapi import FastAPI
+        app = FastAPI()
+
+        @app.get("/")
+        def root():
+            return {"message": "Hello, World!"}
+        ```
+```
+
+The CLI detects the `WRITE_FILE:` pattern and saves the file automatically.
+
+---
+
+## Project structure
 
 ```
 deonai-cli/
 ├── deonai/
-│   ├── cli/            # Argument parsing, REPL loop
-│   ├── core/           # Chat engine, streaming, memory
-│   ├── integrations/   # OpenRouter API client
-│   ├── plugins/        # File ops, code execution
-│   └── utils/          # Formatting, syntax highlighting
-├── deonai.py           # Entry point
+│   ├── cli/
+│   │   └── commands.py        # CLI entry points
+│   ├── core/
+│   │   ├── agent.py           # Conversation loop + model calls
+│   │   ├── base.py            # Base classes
+│   │   ├── config.py          # Config management (~/.deonai/)
+│   │   ├── context.py         # Project context gathering
+│   │   ├── tools.py           # Tool definitions
+│   │   ├── patch_tools.py     # File write/patch tools
+│   │   ├── builtin_tools.py   # Built-in tool implementations
+│   │   ├── git_tools.py       # Git integration
+│   │   └── logger.py
+│   ├── integrations/
+│   │   └── git.py             # Git repo context
+│   ├── utils/
+│   │   ├── colors.py          # Terminal colors
+│   │   ├── animations.py      # Typing indicators
+│   │   ├── diff.py            # File diff display
+│   │   └── fileops.py         # File read/write helpers
+│   └── plugins/               # Plugin system (extensible)
+├── tests/
 ├── install.sh
 ├── install-windows.bat
+├── uninstall.sh
 └── requirements.txt
 ```
 
-## Requirements
+---
 
-- Python 3.9+
-- OpenRouter API key
+## Config
 
-Dependencies are installed automatically by the install script. To install manually:
+Config is stored at `~/.deonai/config.json`. Keys:
 
-```bash
-pip install -r requirements.txt
+```json
+{
+  "api_key": "your-openrouter-key",
+  "model": "openai/gpt-4o",
+  "system_prompt": "optional custom instructions"
+}
 ```
 
-## Configuration
+History lives at `~/.deonai/history.json`. Profiles at `~/.deonai/profiles.json`.
 
-Running `deonai --setup` creates a config file at `~/.config/deonai/config.json`. You can edit it directly to set a default model, system prompt, or additional profiles.
+---
+
+## Uninstall
+
+```bash
+./uninstall.sh
+```
+
+---
 
 ## License
 
